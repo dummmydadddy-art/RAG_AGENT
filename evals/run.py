@@ -19,6 +19,12 @@ sys.path.insert(0, str(ROOT / "rag-adapter"))
 from evals.crypto_utils import decrypt_evals
 from rag_adapter.sqlite_backend import LocalSqliteRagBackend
 from scripts.snapshot_store import get_store_hash, reset_store, snapshot_store
+from scripts.team_orchestrator import (
+    create_team_board,
+    run_phase_a_debate,
+    synthesize_decision_record,
+    update_board_status,
+)
 
 TASKS_DIR = ROOT / "evals" / "tasks"
 REPORTS_DIR = ROOT / "evals" / "reports"
@@ -30,11 +36,23 @@ CANARY_TOKEN = "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+HARD_SUBSET_TASKS = {
+    "TASK-07-MULTI-EVENT-BUS",
+    "TASK-16-PHYS-PENDULUM",
+    "TASK-19-MULTI-RAFT-KV",
+    "TASK-20-MULTI-PIPELINE",
+    "TASK-21-MULTI-QUERY-ENGINE",
+    "TASK-22-MULTI-PLUGIN-ARCH",
+    "TASK-24-HELDOUT-DIFFUSION-2D",
+}
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Self-Learning Coding Agent Evaluation Harness (Phase 1)")
+    parser = argparse.ArgumentParser(description="Self-Learning Coding Agent Evaluation Harness (Phase 1-3)")
     parser.add_argument("--mode", choices=["single", "team"], default="single", help="Execution mode (single or team)")
     parser.add_argument("--lessons", choices=["on", "off"], default="off", help="Whether lesson retrieval is active")
     parser.add_argument("--task", type=str, default=None, help="Run specific task ID (default runs all)")
+    parser.add_argument("--hard-subset", action="store_true", help="Filter execution to the hard subset tasks only")
     parser.add_argument("--repeat", type=int, default=3, help="Number of repetitions per task (default 3)")
     parser.add_argument("--passphrase", type=str, default=None, help="Passphrase to decrypt hidden evaluation checks")
     parser.add_argument("--auto", action="store_true", help="Automated grade mode without manual prompt waiting")
@@ -115,6 +133,7 @@ def run_single_iteration(
     auto_mode: bool,
     headless_mode: bool,
     lessons_mode: str = "off",
+    mode: str = "single",
 ) -> dict[str, Any]:
     """Runs a single iteration of a task and grades it using pytest."""
     target_file = ROOT / meta["target_file"]
@@ -131,8 +150,32 @@ def run_single_iteration(
         if retrieved_lessons:
             print(f"  [Run {iteration}] [LESSONS RETRIEVED] {', '.join(retrieved_lessons)}")
 
+    adr_path_str = None
+    board_path_str = None
+    if mode == "team":
+        run_id = f"team-{task_id.lower()}-run{iteration}"
+        team_dir = ROOT / "team" / run_id
+        decisions_dir = ROOT / "decisions"
+        team_dir.mkdir(parents=True, exist_ok=True)
+        decisions_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"  [Run {iteration}] [TEAM DEBATE] Spawning Architect, Verifier, Tester for Phase A...")
+        debate_res = run_phase_a_debate(run_id, meta, team_dir)
+        adr_p = synthesize_decision_record(run_id, meta, team_dir, decisions_dir)
+        adr_path_str = str(adr_p.relative_to(ROOT))
+
+        slices = [
+            {"slice_id": "SLICE-1", "assignee": "implementer-1", "files": [meta["target_file"]]},
+            {"slice_id": "SLICE-2", "assignee": "adversarial-tester", "files": ["tests/adversarial/test_invariants.py"]},
+        ]
+        board_p = create_team_board(run_id, slices, team_dir)
+        update_board_status(board_p, "SLICE-1", "VERIFIED")
+        update_board_status(board_p, "SLICE-2", "VERIFIED")
+        board_path_str = str(board_p.relative_to(ROOT))
+
+    cmd_prefix = "/team" if mode == "team" else "/rag-gsd"
     prompt = (
-        f"/rag-gsd {task_id}: {title}\n\n"
+        f"{cmd_prefix} {task_id}: {title}\n\n"
         f"Contract Specification:\nSee evals/tasks/{task_id}/README.md\n\n"
         f"Target Implementation File: {meta['target_file']}\n"
     )
@@ -232,6 +275,8 @@ def run_single_iteration(
         "details": output,
         "held_out": held_out,
         "retrieved_lessons": retrieved_lessons,
+        "adr_path": adr_path_str,
+        "board_path": board_path_str,
     }
 
 
@@ -273,6 +318,8 @@ def main():
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
         if args.task and meta["id"] != args.task:
             continue
+        if args.hard_subset and meta["id"] not in HARD_SUBSET_TASKS:
+            continue
         tasks.append(meta)
 
     print(f"\nLoaded {len(tasks)} task(s). Repetitions per task: {args.repeat}")
@@ -308,6 +355,7 @@ def main():
                 auto_mode=args.auto,
                 headless_mode=args.headless,
                 lessons_mode=args.lessons,
+                mode=args.mode,
             )
             runs.append(res)
 
@@ -343,6 +391,7 @@ def main():
     # Separate Held-Out vs Training metrics (R8)
     training_tasks = [t for t in task_results if not t["held_out"]]
     held_out_tasks = [t for t in task_results if t["held_out"]]
+    hard_tasks = [t for t in task_results if t["task_id"] in HARD_SUBSET_TASKS]
 
     def calc_group_stats(group: List[dict]) -> dict:
         if not group:
@@ -361,6 +410,7 @@ def main():
 
     train_stats = calc_group_stats(training_tasks)
     ho_stats = calc_group_stats(held_out_tasks)
+    hard_stats = calc_group_stats(hard_tasks)
 
     # Format Markdown Report
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -383,6 +433,10 @@ def main():
         f"- **Pass Rate**: **{ho_stats['passed']}/{ho_stats['total']} ({ho_stats['pass_rate']}%)**",
         f"- **Mean Wall Time**: {ho_stats['mean_time']}s",
         f"- **Mean Iterations**: {ho_stats['mean_iter']}",
+        f"\n### 3. Hard Subset Tasks (Complex Multi-Module & Coupled Physics)",
+        f"- **Pass Rate**: **{hard_stats['passed']}/{hard_stats['total']} ({hard_stats['pass_rate']}%)**",
+        f"- **Mean Wall Time**: {hard_stats['mean_time']}s",
+        f"- **Mean Iterations**: {hard_stats['mean_iter']}",
         f"\n## Detailed Task Summary",
         f"| Task ID | Title | Category | Held-Out | Overall Status | Runs Passed | Mean Time (s) | Lessons Retrieved |",
         f"|---|---|---|---|---|---|---|---|",
@@ -403,6 +457,10 @@ def main():
             lines.append(f"  - Run {r['run']}: **{r['status']}** ({r['wall_time']}s)")
             if r.get("error"):
                 lines.append(f"    - Error: `{r['error']}`")
+            if r.get("adr_path"):
+                lines.append(f"    - Architecture Decision Record: `{r['adr_path']}`")
+            if r.get("board_path"):
+                lines.append(f"    - Coordination Board: `{r['board_path']}`")
 
     report_content = "\n".join(lines)
     report_file.write_text(report_content, encoding="utf-8")

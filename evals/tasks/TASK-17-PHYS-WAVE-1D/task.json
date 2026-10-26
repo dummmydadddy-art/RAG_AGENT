@@ -1,0 +1,8 @@
+{
+  "id": "TASK-17-PHYS-WAVE-1D",
+  "category": "physics_numerics",
+  "held_out": false,
+  "title": "1D Acoustic Wave PDE Solver with Absorbing Boundaries",
+  "target_file": "src/wave_solver.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

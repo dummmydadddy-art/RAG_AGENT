@@ -1,0 +1,8 @@
+{
+  "id": "TASK-13-MATH-POLYNOMIAL",
+  "category": "pure_maths",
+  "held_out": false,
+  "title": "Chebyshev Polynomial Root Finder via Companion Matrix",
+  "target_file": "src/chebyshev_roots.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

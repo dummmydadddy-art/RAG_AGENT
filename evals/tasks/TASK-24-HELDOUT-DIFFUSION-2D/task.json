@@ -1,0 +1,8 @@
+{
+  "id": "TASK-24-HELDOUT-DIFFUSION-2D",
+  "category": "physics_numerics",
+  "held_out": true,
+  "title": "2D Reaction-Diffusion Gray-Scott Pattern Simulator",
+  "target_file": "src/gray_scott.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "TASK-12-CODE-INTERVAL-TREE",
+  "category": "pure_coding",
+  "held_out": false,
+  "title": "Augmented Interval Tree for Range Stabbing",
+  "target_file": "src/interval_tree.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

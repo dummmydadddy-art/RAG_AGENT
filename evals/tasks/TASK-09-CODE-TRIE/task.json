@@ -1,0 +1,8 @@
+{
+  "id": "TASK-09-CODE-TRIE",
+  "category": "pure_coding",
+  "held_out": false,
+  "title": "Prefix Trie with Autocomplete and Longest Prefix",
+  "target_file": "src/prefix_trie.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "TASK-14-MATH-FFT",
+  "category": "pure_maths",
+  "held_out": false,
+  "title": "Cooley-Tukey Radix-2 1D Fast Fourier Transform",
+  "target_file": "src/fft_solver.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}
