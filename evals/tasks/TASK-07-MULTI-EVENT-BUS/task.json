@@ -1,0 +1,8 @@
+{
+  "id": "TASK-07-MULTI-EVENT-BUS",
+  "category": "multi_module",
+  "held_out": true,
+  "title": "Asynchronous Event Bus with DLQ and Middleware",
+  "target_file": "src/event_system/bus.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
+}

@@ -1,8 +1,8 @@
 {
   "id": "TASK-04-MATH-QUATERNION",
-  "category": "maths",
-  "held_out": true,
-  "title": "Quaternion Algebra & 3D Spatial Rotation Matrix",
-  "description": "Implement `Quaternion(w: float, x: float, y: float, z: float)` in `src/quaternion.py`.\nMethods:\n- `__add__`, `__mul__` (Hamilton product: i^2=j^2=k^2=ijk=-1)\n- `conjugate() -> Quaternion`\n- `norm() -> float` and `normalize() -> Quaternion`\n- `to_rotation_matrix() -> list[list[float]]`: 3x3 orthonormal rotation matrix.\n- `rotate_vector(v: tuple[float, float, float]) -> tuple[float, float, float]`: Rotates vector v via q * v * q^-1.",
-  "target_file": "src/quaternion.py"
+  "category": "pure_maths",
+  "held_out": false,
+  "title": "3D Rotation Quaternion with SLERP",
+  "target_file": "src/quaternion.py",
+  "canary": "CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456"
 }

@@ -8,6 +8,10 @@ CREDENTIALS_BACKUP/
 *.env
 *.env.*
 *.secret
+*credentials*
+*.token
+*.pem
+*.key
 
 # Python artifacts
 __pycache__/
@@ -29,3 +33,6 @@ backend/storage/*.sqlite
 backend/storage/*.sqlite-journal
 *.sqlite
 *.db
+
+.serena/
+

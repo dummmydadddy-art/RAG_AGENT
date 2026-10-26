@@ -1,7 +1,8 @@
-# GSD (Get Shit Done) Autonomous Workflow
+# RAG-GSD Autonomous Workflow (/rag-gsd)
 
 <purpose>
 Executes focused, test-first feature delivery through a single lead orchestrator and specialized subagents.
+Triggered by `/rag-gsd <feature>` to avoid ambiguity with global gsd-core commands.
 Follows the 9-step lifecycle defined in Section 6.4 of ARCHITECTURE.md.
 </purpose>
 

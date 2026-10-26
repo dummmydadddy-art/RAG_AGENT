@@ -1,8 +1,0 @@
-{
-  "id": "TASK-07-MULTI-EVENTBUS",
-  "category": "multi_module",
-  "held_out": false,
-  "title": "Asynchronous Event Bus with Middleware & Dead Letter Queue",
-  "description": "Implement a modular event system in `src/event_system/`:\n- `src/event_system/events.py`: `Event(topic: str, payload: dict, id: Optional[str] = None)`\n- `src/event_system/bus.py`: `EventBus` with `subscribe(topic: str, handler: Callable)`, `publish(event: Event)`, and middleware registration `use(middleware)`.\n- `src/event_system/dead_letter.py`: `DeadLetterQueue` recording failed events after max retries (default 3 retries).\nMiddleware can inspect, mutate, or abort event delivery.",
-  "target_file": "src/event_system/bus.py"
-}

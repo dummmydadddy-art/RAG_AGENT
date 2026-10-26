@@ -15,8 +15,8 @@ The following files and directories are protected and require explicit human app
 - `evals/**` (evaluation benchmarks, hidden test fixtures, runners)
 
 **Hidden Checks Invariant**:
-- Autonomous agents are strictly forbidden from reading, searching, or accessing the hidden evaluation checks store (`evals/hidden/**` or `.hidden_evals/**`).
-- Hidden checks are copied into the workspace and evaluated exclusively by the evaluation runner post-execution.
+- Autonomous agents are strictly forbidden from reading, searching, or attempting to access the protected benchmark evaluation store, its encrypted archives, or any decrypted temporary fixtures.
+- Hidden checks are decrypted and evaluated exclusively by the evaluation runner post-execution with active canary token scanning.
 
 The reviewer role must reject any autonomous pull request or diff modifying protected paths without recorded human authorization.
 

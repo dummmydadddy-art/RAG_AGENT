@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any, Dict, List, Optional
 import httpx
@@ -9,20 +10,32 @@ from rag_adapter.sqlite_backend import LocalSqliteRagBackend
 class HttpRagBackend(RagAdapter):
     """
     HTTP REST client adapter for the PHP RAG engine service,
-    with automatic local SQLite fallback if the remote/local HTTP daemon is unavailable.
+    with automatic local SQLite fallback (disabled when strict_mode is True).
     """
 
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
         api_key: Optional[str] = None,
-        timeout: float = 10.0,
+        timeout: float = 30.0,
         sqlite_fallback: Optional[LocalSqliteRagBackend] = None,
+        strict_mode: bool = False,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or os.getenv("LMS_SERVICE_API_KEY") or os.getenv("RAG_API_KEY") or "YOUR_SERVICE_API_KEY"
         self.timeout = timeout
         self.fallback = sqlite_fallback or LocalSqliteRagBackend()
+        self.strict_mode = strict_mode or (os.getenv("RAG_STRICT_MODE", "0").lower() in ("1", "true", "yes"))
+
+    @property
+    def backend_identity(self) -> str:
+        if self.strict_mode:
+            return f"http_rag_engine_strict ({self.base_url} PHP 8.3 + nomic-embed-text)"
+        return f"http_rag_engine ({self.base_url} with sqlite_fallback)"
+
+    @property
+    def retrieval_mode(self) -> str:
+        return "hybrid_rrf_dense_sparse"
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -39,6 +52,7 @@ class HttpRagBackend(RagAdapter):
         filters: Optional[Dict[str, Any]] = None,
         k: int = 5,
     ) -> List[Hit]:
+        http_error: Optional[Exception] = None
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 resp = client.post(
@@ -51,20 +65,38 @@ class HttpRagBackend(RagAdapter):
                     results = data.get("results", [])
                     hits: List[Hit] = []
                     for r in results:
+                        raw_meta = r.get("metadata")
+                        if isinstance(raw_meta, str):
+                            try:
+                                parsed_meta = json.loads(raw_meta)
+                            except Exception:
+                                parsed_meta = {"raw": raw_meta}
+                        elif isinstance(raw_meta, dict):
+                            parsed_meta = raw_meta
+                        else:
+                            parsed_meta = {}
+
                         hits.append(
                             Hit(
-                                doc_id=str(r.get("id") or r.get("material_id") or ""),
+                                doc_id=str(r.get("material_id") or r.get("id") or ""),
                                 collection=str(r.get("collection") or "knowledge"),
                                 text=str(r.get("content") or r.get("title") or ""),
-                                metadata=r.get("metadata") or {},
+                                metadata=parsed_meta,
                                 score=float(r.get("similarity") or r.get("score") or 0.0),
                             )
                         )
                     if hits:
                         return hits
-        except Exception:
-            # Fall back to local SQLite on network or connection errors
-            pass
+                else:
+                    if self.strict_mode:
+                        raise RuntimeError(f"HTTP search returned non-200 status {resp.status_code}: {resp.text}")
+        except Exception as e:
+            http_error = e
+            if self.strict_mode:
+                raise RuntimeError(f"HTTP search failed in strict mode: {e}") from e
+
+        if self.strict_mode:
+            raise RuntimeError(f"Strict mode active: HTTP search returned zero results or encountered error: {http_error}")
 
         return self.fallback.search(query, collections, filters, k)
 
@@ -75,22 +107,26 @@ class HttpRagBackend(RagAdapter):
         text: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        # Always update local sqlite storage
+        # Always maintain local store for lessons/status lifecycle
         self.fallback.upsert(collection, doc_id, text, metadata)
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                client.post(
+                resp = client.post(
                     f"{self.base_url}/api/rag/ingest",
                     json={
                         "material_id": doc_id,
-                        "collection": collection,
+                        "title": (metadata or {}).get("title", doc_id),
                         "content": text,
+                        "collection": collection,
                         "metadata": metadata or {},
                     },
                     headers=self._get_headers(),
                 )
-        except Exception:
-            pass
+                if self.strict_mode and resp.status_code >= 400:
+                    raise RuntimeError(f"HTTP ingest returned error {resp.status_code}: {resp.text}")
+        except Exception as e:
+            if self.strict_mode:
+                raise RuntimeError(f"HTTP ingest failed in strict mode: {e}") from e
 
     def get(self, collection: str, doc_id: str) -> Optional[Doc]:
         return self.fallback.get(collection, doc_id)

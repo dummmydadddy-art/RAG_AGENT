@@ -1,12 +1,15 @@
-# Symplectic Stormer-Verlet Integrator citing Knowledge Base
+# Task Specification: Symplectic Störmer-Verlet Integrator via Project Conventions
 
-**Category**: retrieval_knowledge
-**Held Out**: False
+## 1. Scope & Directives
+Implement the numerical integrator in `src/integrator.py`.
 
-## Specification
-Retrieve formulation from knowledge collection (ID: K-2026-PHYS-001).
-Implement `StormerVerletIntegrator(force_fn: Callable[[float], float], dt: float, q0: float, v0: float)` in `src/stormer_verlet.py`.
-Methods:
-- `step() -> float`: Computes next position q_{n+1} and advances state.
-- `get_state() -> tuple[float, float]`: Returns current (q, p).
-Must cite `K-2026-PHYS-001` in the class docstring.
+### Mandatory Knowledge Retrieval Requirement
+- You MUST follow this project's exact Hamiltonian integrator conventions.
+- Do NOT assume formulas or coordinate conventions from memory or parametric recall.
+- **Action**: Query the RAG engine using `rag_search` on the `knowledge` collection for project integrator conventions to retrieve:
+  1. The function signature and parameter validations.
+  2. The exact coordinate and momentum conventions ($q$ vs $p$).
+  3. The two-step coordinate recursion formula.
+  4. The startup step for the first position $q_1$.
+  5. The momentum recovery conventions for boundary and interior points.
+- The evaluation runner will audit your execution trace to verify that a `rag_search` call was issued and successfully returned the project's integrator conventions knowledge document.
