@@ -1,0 +1,94 @@
+{
+  "phase": "1",
+  "mode": "single",
+  "lessons_mode": "off",
+  "retrieval_mode": "hybrid_rrf_pinned",
+  "timestamp": "2026-10-26T13:58:00Z",
+  "traces": [
+    {
+      "task_id": "TASK-01-CODE-LRU",
+      "category": "pure_coding",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.1,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-02-CODE-GRAPH",
+      "category": "pure_coding",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.3,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-03-MATH-HALLEY",
+      "category": "pure_maths",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.0,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-04-MATH-QUATERNION",
+      "category": "pure_maths",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.5,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-05-PHYS-KEPLER",
+      "category": "physics_numerics",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.8,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-06-PHYS-HEAT-1D",
+      "category": "physics_numerics",
+      "held_out": true,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 3.1,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-07-MULTI-EVENT-BUS",
+      "category": "multi_module",
+      "held_out": true,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 3.4,
+      "retrieved_lesson_ids": [],
+      "status": "PASS"
+    },
+    {
+      "task_id": "TASK-08-RETRIEVAL-SYMPLECTIC",
+      "category": "retrieval_dependent",
+      "held_out": false,
+      "tdd_iterations": 1,
+      "wall_time_seconds": 2.9,
+      "retrieval_calls": [
+        {
+          "tool": "rag_search",
+          "collection": "knowledge",
+          "query": "project integrator conventions stormer verlet",
+          "returned_doc_ids": [
+            "stormer_verlet_integrator_conventions_v1",
+            "K-2026-PHYS-001"
+          ]
+        }
+      ],
+      "retrieved_lesson_ids": [
+        "stormer_verlet_integrator_conventions_v1"
+      ],
+      "status": "PASS"
+    }
+  ]
+}

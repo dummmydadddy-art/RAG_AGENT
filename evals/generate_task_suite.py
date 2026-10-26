@@ -501,8 +501,8 @@ def test_bracket_bisection_fallback_on_zero_derivative():
     df = lambda x: 3.0 * x**2 - 1.0
     d2f = lambda x: 6.0 * x
 
-    # With bracket [1.0, 2.0] where f(1)=-2, f(2)=4
-    res = find_root_halley(f, df, d2f, x0=1.0 / math.sqrt(3.0), bracket=(1.0, 2.0), tol=1e-10)
+    # With bracket [0.5, 2.0] where f(0.5)=-2.375, f(2)=4, and x0 in [0.5, 2.0]
+    res = find_root_halley(f, df, d2f, x0=1.0 / math.sqrt(3.0), bracket=(0.5, 2.0), tol=1e-10)
     assert res["converged"] is True
     assert abs(f(res["root"])) < 1e-9
 
@@ -990,72 +990,78 @@ def test_event_validation():
         Event(id="evt1", topic="", payload={{"name": "Alice"}})
 
 
-@pytest.mark.asyncio
-async def test_publish_and_wildcard_subscribe():
-    bus = EventBus()
-    received = []
+def test_publish_and_wildcard_subscribe():
+    async def _run():
+        bus = EventBus()
+        received = []
 
-    async def on_user(event: Event):
-        received.append(("user", event.id))
+        async def on_user(event: Event):
+            received.append(("user", event.id))
 
-    async def on_wildcard(event: Event):
-        received.append(("all", event.id))
+        async def on_wildcard(event: Event):
+            received.append(("all", event.id))
 
-    bus.subscribe("user.created", on_user)
-    bus.subscribe("*", on_wildcard)
+        bus.subscribe("user.created", on_user)
+        bus.subscribe("*", on_wildcard)
 
-    e1 = Event(id="e1", topic="user.created", payload={{"val": 1}})
-    await bus.publish(e1)
+        e1 = Event(id="e1", topic="user.created", payload={{"val": 1}})
+        await bus.publish(e1)
 
-    assert ("user", "e1") in received
-    assert ("all", "e1") in received
+        assert ("user", "e1") in received
+        assert ("all", "e1") in received
 
-
-@pytest.mark.asyncio
-async def test_middleware_pipeline_short_circuit():
-    bus = EventBus()
-    called = []
-
-    async def mw_block(event: Event, next_handler):
-        if event.payload.get("blocked"):
-            return  # Short circuit
-        await next_handler(event)
-
-    async def handler(event: Event):
-        called.append(event.id)
-
-    bus.add_middleware(mw_block)
-    bus.subscribe("test", handler)
-
-    await bus.publish(Event(id="e1", topic="test", payload={{"blocked": True}}))
-    assert len(called) == 0
-
-    await bus.publish(Event(id="e2", topic="test", payload={{"blocked": False}}))
-    assert called == ["e2"]
+    asyncio.run(_run())
 
 
-@pytest.mark.asyncio
-async def test_retry_and_dlq_routing():
-    dlq = DeadLetterQueue()
-    bus = EventBus(dlq=dlq, max_retries=2)
-    attempts = 0
+def test_middleware_pipeline_short_circuit():
+    async def _run():
+        bus = EventBus()
+        called = []
 
-    async def failing_handler(event: Event):
-        nonlocal attempts
-        attempts += 1
-        raise ValueError("Simulated network timeout")
+        async def mw_block(event: Event, next_handler):
+            if event.payload.get("blocked"):
+                return  # Short circuit
+            await next_handler(event)
 
-    bus.subscribe("order.process", failing_handler)
-    event = Event(id="ord1", topic="order.process", payload={{"order_id": 99}})
+        async def handler(event: Event):
+            called.append(event.id)
 
-    await bus.publish(event)
+        bus.add_middleware(mw_block)
+        bus.subscribe("test", handler)
 
-    assert attempts == 3  # 1 initial + 2 retries
-    assert len(dlq) == 1
-    failed = dlq.get_failed_events("order.process")
-    assert len(failed) == 1
-    assert failed[0]["event"].id == "ord1"
-    assert "Simulated network timeout" in failed[0]["failure_reason"]
+        await bus.publish(Event(id="e1", topic="test", payload={{"blocked": True}}))
+        assert len(called) == 0
+
+        await bus.publish(Event(id="e2", topic="test", payload={{"blocked": False}}))
+        assert called == ["e2"]
+
+    asyncio.run(_run())
+
+
+def test_retry_and_dlq_routing():
+    async def _run():
+        dlq = DeadLetterQueue()
+        bus = EventBus(dlq=dlq, max_retries=2)
+        attempts = 0
+
+        async def failing_handler(event: Event):
+            nonlocal attempts
+            attempts += 1
+            raise ValueError("Simulated network timeout")
+
+        bus.subscribe("order.process", failing_handler)
+        event = Event(id="ord1", topic="order.process", payload={{"order_id": 99}})
+
+        await bus.publish(event)
+
+        assert attempts == 3  # 1 initial + 2 retries
+        assert len(dlq) == 1
+        failed = dlq.get_failed_events("order.process")
+        assert len(failed) == 1
+        assert failed[0]["event"].id == "ord1"
+        assert "Simulated network timeout" in failed[0]["failure_reason"]
+
+    asyncio.run(_run())
 """
     },
     {
