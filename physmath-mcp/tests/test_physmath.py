@@ -1,4 +1,5 @@
 import pytest
+from physmath_mcp.sandbox import run_sandboxed_code
 from physmath_mcp.server import numeric_compare, sym_equiv, units_check
 
 
@@ -69,3 +70,23 @@ def test_numeric_compare_divergent():
     res = numeric_compare(func1, func2, domain, tol_rel=1e-3, tol_abs=1e-3)
     assert res.get("match") is False
     assert res.get("max_abs_diff") >= 5.0
+
+
+def test_sandbox_timeout_enforcement():
+    # Attempt an infinite loop or excessive sleep
+    infinite_script = "import time\ntime.sleep(5.0)\nprint('finished')"
+    res = run_sandboxed_code(infinite_script, timeout_seconds=0.5)
+    assert res.get("success") is False
+    assert "timed out after 0.5s" in res.get("error", "")
+
+
+def test_sandbox_network_denial_enforcement():
+    # Attempt network connection
+    network_script = (
+        "import socket\n"
+        "s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n"
+        "s.connect(('1.1.1.1', 80))\n"
+    )
+    res = run_sandboxed_code(network_script, timeout_seconds=2.0)
+    assert res.get("success") is False
+    assert "Network access is disabled inside the physmath sandbox" in res.get("error", "")

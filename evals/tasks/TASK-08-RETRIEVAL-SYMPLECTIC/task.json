@@ -1,0 +1,8 @@
+{
+  "id": "TASK-08-RETRIEVAL-SYMPLECTIC",
+  "category": "retrieval_knowledge",
+  "held_out": false,
+  "title": "Symplectic Stormer-Verlet Integrator citing Knowledge Base",
+  "description": "Retrieve formulation from knowledge collection (ID: K-2026-PHYS-001).\nImplement `StormerVerletIntegrator(force_fn: Callable[[float], float], dt: float, q0: float, v0: float)` in `src/stormer_verlet.py`.\nMethods:\n- `step() -> float`: Computes next position q_{n+1} and advances state.\n- `get_state() -> tuple[float, float]`: Returns current (q, p).\nMust cite `K-2026-PHYS-001` in the class docstring.",
+  "target_file": "src/stormer_verlet.py"
+}

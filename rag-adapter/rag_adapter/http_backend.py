@@ -20,7 +20,7 @@ class HttpRagBackend(RagAdapter):
         sqlite_fallback: Optional[LocalSqliteRagBackend] = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key or os.getenv("LMS_SERVICE_API_KEY") or os.getenv("RAG_API_KEY") or ""
+        self.api_key = api_key or os.getenv("LMS_SERVICE_API_KEY") or os.getenv("RAG_API_KEY") or "YOUR_SERVICE_API_KEY"
         self.timeout = timeout
         self.fallback = sqlite_fallback or LocalSqliteRagBackend()
 
@@ -29,6 +29,7 @@ class HttpRagBackend(RagAdapter):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
             headers["X-API-Key"] = self.api_key
+            headers["X-Service-Key"] = self.api_key
         return headers
 
     def search(

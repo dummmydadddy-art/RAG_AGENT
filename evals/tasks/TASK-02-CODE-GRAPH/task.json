@@ -1,0 +1,8 @@
+{
+  "id": "TASK-02-CODE-GRAPH",
+  "category": "pure_coding",
+  "held_out": false,
+  "title": "Topological Sorter with Cycle Detection and Dependency Depth",
+  "description": "Implement `DependencyGraph` in `src/dependency_graph.py`.\nMethods:\n- `add_node(name: str) -> None`: Adds a node.\n- `add_dependency(node: str, depends_on: str) -> None`: Declares that `node` depends on `depends_on`.\n- `topological_sort() -> list[str]`: Returns valid execution order (dependencies before dependents). Raises `CycleError` with detected cycle if cyclic.\n- `get_critical_path_depth() -> int`: Returns length of longest dependency chain (number of nodes in critical path). Empty graph returns 0.",
+  "target_file": "src/dependency_graph.py"
+}

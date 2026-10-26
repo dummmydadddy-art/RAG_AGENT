@@ -30,25 +30,27 @@ Non-goals: fine-tuning model weights; letting the agent edit its own rules, skil
 
 ## 3. Antigravity platform mapping
 
-These findings come from public documentation and guides as of late October 2026. Paths differ between surfaces and versions, so Phase 0 must verify every row against the official documentation at antigravity.google/docs before anything depends on it.
+*Verified against live host environment on 26 October 2026 (see docs/PLATFORM_NOTES.md).*
 
-| Capability | Location or mechanism | Confidence |
+| Capability | Verified Location or Mechanism | Status & Operational Details |
 | --- | --- | --- |
-| Surfaces | Desktop app (2.0), CLI (`agy`), IDE, SDK. Desktop and CLI share one agent harness | High |
-| Rules | `GEMINI.md` or `AGENTS.md` in project root (GEMINI.md wins on conflict); global `~/.gemini/GEMINI.md`; `.agents/rules/*.md`. 12,000 character cap per rule file | Medium-high |
-| Skills | `.agents/skills/<name>/SKILL.md` (older `.agent/skills` still read). `description` required, `name` optional, optional `scripts/`, `examples/`, `resources/`. Triggered by the agent matching the description | High |
-| Global skills | `~/.gemini/config/skills/` (2.0 and CLI), `~/.gemini/antigravity/skills/` (IDE) | Medium |
-| Custom agents | `.agents/agents/<name>.md` or `<name>/agent.md`; global `~/.gemini/config/agents/`. Frontmatter includes `mainAgent` and `hidden`. Reported as desktop and CLI only, not IDE | Medium |
-| Subagents | Orchestrator defines and spawns them at runtime, in parallel, each with its own context and git worktree; the parent is notified on completion. Subagents do not message each other | Medium-high |
-| Workflows and commands | Markdown macros triggered by a slash command; folder name varies by version (`.agents/workflows/` or `.agent/workflows/`) | Low-medium |
-| MCP servers | `~/.gemini/antigravity/mcp_config.json` in the IDE; confirm for desktop and CLI | Medium |
-| Hooks and scheduling | Event hooks and scheduled tasks exist in 2.0; the CLI has `/goal` and `/schedule` | Medium |
+| Surfaces | Desktop App v44.4.3 (`C:\Users\Mukul\AppData\Local\Programs\antigravity\Antigravity.exe`) | Active host surface. Electron-based desktop app |
+| App Data | `C:\Users\Mukul\.gemini\antigravity` | Contains `brain/`, `conversations/`, `mcp/` schemas, `bin/` |
+| Global Config | `C:\Users\Mukul\.gemini\config` | Contains `agents/`, `skills/`, `plugins/`, `mcp_config.json` |
+| Rules | Project root `GEMINI.md` (wins on conflict) and `.agents/rules/*.md`. Global: `C:\Users\Mukul\.gemini\GEMINI.md` | Cap: 12,000 characters per rule file. Keep `GEMINI.md` < 1,500 tokens |
+| Skills | Project: `.agents/skills/<name>/SKILL.md`. Global: `C:\Users\Mukul\.gemini\config\skills/` | YAML frontmatter (`name`, `description`). Triggered by description matching |
+| Custom Agents | Project: `.agents/agents/<name>.md`. Global: `C:\Users\Mukul\.gemini\config\agents/*.md` | YAML frontmatter (`name`, `description`, `tools`, `color`). Desktop/CLI supported |
+| Subagents | Native runtime tools `invoke_subagent` & `define_subagent` | Parallel execution in isolated worktrees (`inherit`, `branch`, `share`); parent notified via message |
+| Workflows | `.agents/workflows/*.md` | Slash command macros triggering defined lifecycles |
+| MCP Servers | `C:\Users\Mukul\.gemini\config\mcp_config.json` | Active stdio JSON-RPC configuration for all agent surfaces |
+| Hooks & Scheduling | CLI `/schedule` and `/goal` tools; Antigravity hooks directory | Supported in runtime environment |
 
 Consequences for this design:
 
-- Use the `.agents/` spelling and fall back to `.agent/` only if the installed version requires it.
-- Roles are custom agents. If your surface lacks custom agents (IDE), the same role files are loaded as skills and the orchestrator plays each role in turn, or you start one Agent Manager conversation per role by hand.
-- Keep `GEMINI.md` under about 1,500 tokens because it is loaded on every prompt; put detail in skills.
+- Use the `.agents/` spelling for all project configuration.
+- Roles are custom agents in `.agents/agents/` using YAML frontmatter (`name`, `description`, `tools`, `color`).
+- Keep `GEMINI.md` under about 1,500 tokens because it is loaded on every prompt; put detail in skills and `.agents/rules/`.
+- MCP servers register directly in `C:\Users\Mukul\.gemini\config\mcp_config.json` pointing to `.venv\Scripts\python.exe`.
 
 ## 4. Architecture
 

@@ -1,0 +1,8 @@
+{
+  "id": "TASK-01-CODE-LRU",
+  "category": "pure_coding",
+  "held_out": false,
+  "title": "Thread-safe LRU Cache with Expiration TTL",
+  "description": "Implement `LRUCache(capacity: int, default_ttl_seconds: Optional[float] = None)` in `src/lru_cache.py`.\nMethods:\n- `put(key: str, value: Any, ttl: Optional[float] = None) -> None`: Stores or updates a key-value pair.\n- `get(key: str) -> Optional[Any]`: Returns the value and marks the key as most recently used. Returns None if expired or not found.\n- `delete(key: str) -> bool`: Removes key, returns True if existed.\n- `__len__() -> int`: Returns current non-expired count.\n- Thread-safe using `threading.RLock`.\nWhen capacity is exceeded, evicts the least recently used item.",
+  "target_file": "src/lru_cache.py"
+}

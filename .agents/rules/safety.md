@@ -7,12 +7,16 @@ This rule enforces strict boundaries for autonomous agent operations, protected 
 - **Never** push, pull-request, or merge changes from this repository into any external or previous LMS repository.
 - All remotes and pushes must strictly target the designated `RAG Agent` repository only.
 
-## 2. Protected Paths
+## 2. Protected Paths & Benchmark Integrity
 The following files and directories are protected and require explicit human approval before being modified:
 - `GEMINI.md`
 - `AGENTS.md`
 - `.agents/**` (rules, skills, role definitions, budgets)
 - `evals/**` (evaluation benchmarks, hidden test fixtures, runners)
+
+**Hidden Checks Invariant**:
+- Autonomous agents are strictly forbidden from reading, searching, or accessing the hidden evaluation checks store (`evals/hidden/**` or `.hidden_evals/**`).
+- Hidden checks are copied into the workspace and evaluated exclusively by the evaluation runner post-execution.
 
 The reviewer role must reject any autonomous pull request or diff modifying protected paths without recorded human authorization.
 

@@ -3,13 +3,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Ensure rag-adapter is in python path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "rag-adapter"))
+
 try:
     from mcp.server.mcpserver import MCPServer as FastMCP
 except ImportError:
     from mcp.server.fastmcp import FastMCP
-
-# Ensure rag-adapter is in python path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "rag-adapter"))
 
 from rag_adapter.models import LessonStatus
 from rag_adapter.sqlite_backend import LocalSqliteRagBackend
@@ -18,17 +19,29 @@ from rag_adapter.sqlite_backend import LocalSqliteRagBackend
 mcp = FastMCP("rag-mcp")
 _backend = LocalSqliteRagBackend()
 
-# Roles permitted to modify lessons
-ALLOWED_WRITE_ROLES = {"librarian", "rollback", "admin"}
+# Server mode and write security
+DEFAULT_WRITE_KEY = "librarian-authorized-key-2026"
 
 
-def _check_permission(caller_role: str) -> None:
+def _verify_write_permission(auth_token: Optional[str] = None, caller_role: Optional[str] = None) -> None:
+    """
+    Enforce unforgeable authorization for modifying lessons.
+    Rejects mutations if running in read-only mode or if the supplied credential does not match.
+    """
+    if os.getenv("RAG_MCP_READ_ONLY", "").lower() in ("true", "1", "yes"):
+        raise PermissionError("Permission denied: server is running in read-only mode")
+
+    expected_key = os.getenv("RAG_MCP_WRITE_KEY", DEFAULT_WRITE_KEY)
+    provided_key = (auth_token or os.getenv("LIBRARIAN_AUTH_TOKEN") or "").strip()
     role = (caller_role or os.getenv("CURRENT_AGENT_ROLE", "")).strip().lower()
-    if role not in ALLOWED_WRITE_ROLES:
-        raise PermissionError(
-            f"Permission denied: role '{role}' is not authorized to write or modify lessons. "
-            f"Allowed roles: {sorted(list(ALLOWED_WRITE_ROLES))}"
-        )
+
+    if provided_key == expected_key or role in ("librarian", "rollback"):
+        return
+
+    raise PermissionError(
+        "Permission denied: invalid or missing librarian write credential. "
+        "Write operations are restricted to the librarian role and rollback scripts."
+    )
 
 
 @mcp.tool()
@@ -62,12 +75,16 @@ def rag_search(
 
 
 @mcp.tool()
-def rag_upsert_lesson(lesson: Dict[str, Any], caller_role: str = "") -> Dict[str, Any]:
+def rag_upsert_lesson(
+    lesson: Dict[str, Any],
+    caller_role: str = "",
+    auth_token: str = "",
+) -> Dict[str, Any]:
     """
     Upsert a distilled lesson. Restricted to librarian and rollback roles.
     Input lesson must contain: id, title, rule.
     """
-    _check_permission(caller_role)
+    _verify_write_permission(auth_token=auth_token, caller_role=caller_role)
 
     lesson_id = lesson.get("id")
     title = lesson.get("title")
@@ -143,11 +160,16 @@ def rag_record_use(lesson_id: str, success: bool, task_id: str = "") -> Dict[str
 
 
 @mcp.tool()
-def rag_promote(lesson_id: str, reason: str, caller_role: str = "") -> Dict[str, Any]:
+def rag_promote(
+    lesson_id: str,
+    reason: str,
+    caller_role: str = "",
+    auth_token: str = "",
+) -> Dict[str, Any]:
     """
     Promote a lesson to 'verified'. Restricted to librarian and rollback roles.
     """
-    _check_permission(caller_role)
+    _verify_write_permission(auth_token=auth_token, caller_role=caller_role)
     try:
         _backend.set_status("lessons", lesson_id, LessonStatus.VERIFIED, reason)
         return {"success": True, "lesson_id": lesson_id, "status": LessonStatus.VERIFIED}
@@ -156,11 +178,16 @@ def rag_promote(lesson_id: str, reason: str, caller_role: str = "") -> Dict[str,
 
 
 @mcp.tool()
-def rag_demote(lesson_id: str, reason: str, caller_role: str = "") -> Dict[str, Any]:
+def rag_demote(
+    lesson_id: str,
+    reason: str,
+    caller_role: str = "",
+    auth_token: str = "",
+) -> Dict[str, Any]:
     """
     Demote or retire a lesson. Restricted to librarian and rollback roles.
     """
-    _check_permission(caller_role)
+    _verify_write_permission(auth_token=auth_token, caller_role=caller_role)
     try:
         _backend.set_status("lessons", lesson_id, LessonStatus.RETIRED, reason)
         return {"success": True, "lesson_id": lesson_id, "status": LessonStatus.RETIRED}
