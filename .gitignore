@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Credentials and secrets
+CREDENTIALS_BACKUP/
+*.env
+*.env.*
+*.secret
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# Antigravity & team transient files
+team/
+!team/.gitkeep
+!team/README.md
+
+# Logs & temporary files
+*.log
+backend/api_debug.log
+backend/storage/*.sqlite-journal

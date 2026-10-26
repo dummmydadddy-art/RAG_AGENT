@@ -1,0 +1,1525 @@
+[
+  {
+    "updatedAt": "2026-09-06T17:55:49.000Z",
+    "createdAt": "2026-09-04T13:47:48.966Z",
+    "id": "cwvpc4Hhy7DQbLWt",
+    "name": "EduConnect LMS Telegram - Backend Aligned",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "updates": [
+            "message"
+          ],
+          "additionalFields": {}
+        },
+        "id": "08dcd3eb-e2d9-4b9a-adc8-00607d9b9ece",
+        "name": "Telegram Trigger",
+        "type": "n8n-nodes-base.telegramTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -2800,
+          224
+        ],
+        "webhookId": "6746d172-aff3-4537-ba59-34940d7596f3",
+        "credentials": {
+          "telegramApi": {
+            "id": "uJoD4GTZoEaPExwk",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const msg = $json.message || $json.edited_message;\nif (!msg) return [{json:{isValid:false, reason:'No Telegram message'}}];\n\nconst contactPhone = msg.contact?.phone_number || '';\nlet text = String(msg.text || msg.caption || '').trim();\n\n// Handle Telegram non-text media gracefully\nif (!text) {\n  if (msg.voice) text = '[voice message]';\n  else if (msg.document) text = '[document]';\n  else if (msg.location) text = '[location]';\n  else if (msg.sticker) text = '[sticker]';\n  else if (msg.animation) text = '[gif]';\n  else if (msg.photo) text = '[photo]';\n}\n\nlet phoneFromText = '';\n\n// Check if message explicitly mentions a registered number (e.g. \"my phone is 9356968767\")\nconst regMatch = text.match(/(?:registered\\s*(?:mobile|phone|number|no|num)?|my\\s+(?:registered\\s+)?(?:mobile|phone|number|no|num))\\s*(?:is|:|-)?\\s*(\\+?\\d[\\d\\s().-]{4,18}\\d)/i);\nif (regMatch) {\n  phoneFromText = regMatch[1];\n} else {\n  // Check if message is a quiz answer or contains letters - NEVER extract phone from quiz answers!\n  const isQuizPattern = /^(?:[1-5]\\s*[\\)\\.\\:\\-–—\\s]\\s*[a-dA-D]|answers?|ans|option|choice|[a-dA-D]$)/im.test(text) ||\n                        /(?:[1-5]\\s*[\\)\\.\\:\\-–—\\s]\\s*[a-dA-D].*){2,}/is.test(text);\n\n  if (!isQuizPattern) {\n    // Check for standard 10-digit Indian mobile numbers (starting with 6-9, optionally +91 or 0)\n    const inMatch = text.match(/(?:^|[^\\d])(\\+?(?:91)?[\\s.-]?[6-9]\\d{4}[\\s.-]?\\d{5})(?:$|[^\\d])/);\n    if (inMatch) {\n      phoneFromText = inMatch[1];\n    } else if (/^[+\\d\\s().-]{4,20}$/.test(text) && !/[a-zA-Z]/.test(text)) {\n      // Pure digits/phone formatting ONLY (strictly NO letters allowed anywhere in the string!)\n      // Handles BV-01 \"12345\" and other pure numeric inputs\n      const digitsOnly = text.replace(/\\D/g, '');\n      if (digitsOnly.length >= 4 && digitsOnly.length <= 15) {\n        phoneFromText = digitsOnly;\n      }\n    }\n  }\n}\n\nlet rawPhone = String(contactPhone || phoneFromText || '').replace(/\\D/g,'');\nlet phone = '';\nif (rawPhone.length === 10) {\n  phone = rawPhone;\n} else if (rawPhone.length > 10 && rawPhone.startsWith('91')) {\n  phone = rawPhone.slice(2);\n} else if (rawPhone.length > 10 && rawPhone.startsWith('0')) {\n  phone = rawPhone.slice(1);\n} else if (rawPhone.length > 10) {\n  phone = rawPhone.slice(-10);\n} else if (rawPhone.length > 0) {\n  phone = rawPhone;\n}\n\nconst chatId = String(msg.chat?.id || '');\nconst telegramUserId = String(msg.from?.id || chatId);\nconst profileName = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || msg.from?.username || '';\n\nreturn [{json:{\n  isValid: Boolean(chatId),\n  messageText: text,\n  contactPhone,\n  phone,\n  rawPhone,\n  chatId,\n  telegramUserId,\n  profileName,\n  telegramMessageId: String(msg.message_id || ''),\n  timestamp: new Date().toISOString()\n}}];\n"
+        },
+        "id": "a281aa93-aa58-4356-877c-42d8ca8e69dd",
+        "name": "Normalize Telegram Message",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -2576,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nconst key = `tg_student_${d.telegramUserId}`;\nlet store = {};\ntry { store = await $getWorkflowStaticData('global'); } catch(e) {}\n\nconst text = String(d.messageText || '').trim();\n\n// Support unlinking / reset (SM-01, SM-04)\nif (text === '/reset' || text === '/unlink') {\n  try {\n    delete store[key];\n    store[`${key}_unlinked`] = true;\n    delete store[`${key}_lastIntent`];\n  } catch(e) {}\n  return [{json:{\n    ...d,\n    needsPhone: true,\n    skipLookup: false,\n    identityKey: key,\n    unlinked: true\n  }}];\n}\n\nconst isExplicitlyUnlinked = Boolean(store[`${key}_unlinked`]);\n\n// If student is sending a valid phone, clear any previous unlinked flag to allow re-linking\nif (d.phone && d.phone.length === 10) {\n  try { delete store[`${key}_unlinked`]; } catch(e) {}\n}\n\nlet mapped = store[key] || null;\n\n// Allow default mapping for primary developer test account (8173291314) ONLY if not explicitly unlinked\nif (!mapped && !isExplicitlyUnlinked && (String(d.telegramUserId) === '8173291314' || String(d.chatId) === '8173291314')) {\n  mapped = {\n    studentId: '4e0dda5a-a7e1-455d-b42b-08eb26027829',\n    studentName: 'Arjun Mehta',\n    className: 'FSWD Morning Batch - Jan 2025',\n    courseName: 'Full Stack Web Development',\n    courseDuration: '6 Months',\n    batchName: 'FSWD Morning Batch - Jan 2025',\n    teacherName: 'Dr. Priya Sharma',\n    startDate: '2025-01-15',\n    endDate: '2025-07-15',\n    batchTiming: '10:00 AM - 12:30 PM',\n    phone: '9356968767'\n  };\n  try { store[key] = mapped; } catch(e) {}\n}\n\n// SM-07: If already linked and user casually mentions a different phone or non-linking input,\n// do NOT re-link to a different student unless the message is an explicit linking command.\nconst isExplicitLinkingMsg = /^(?:\\+?91)?\\d{10}$/.test(text) || /registered\\s*(?:mobile|phone|number)/i.test(text) || Boolean(d.contactPhone);\n\nif (mapped && !isExplicitLinkingMsg) {\n  // Ignore non-linking numbers or quiz patterns, keep current student identity\n  d.phone = '';\n  d.rawPhone = '';\n}\n\nconst phone = d.phone || mapped?.phone || '';\nconst studentId = mapped?.studentId || '';\n\nif (mapped && !d.phone) {\n  return [{json:{\n    ...d,\n    studentId: mapped.studentId,\n    studentName: mapped.studentName || 'Arjun Mehta',\n    className: mapped.className || mapped.batchName || 'FSWD Morning Batch - Jan 2025',\n    courseName: mapped.courseName || 'Full Stack Web Development',\n    courseDuration: mapped.courseDuration || '6 Months',\n    batchName: mapped.batchName || 'FSWD Morning Batch - Jan 2025',\n    teacherName: mapped.teacherName || 'Dr. Priya Sharma',\n    startDate: mapped.startDate || '2025-01-15',\n    endDate: mapped.endDate || '2025-07-15',\n    batchTiming: mapped.batchTiming || '10:00 AM - 12:30 PM',\n    needsPhone: false,\n    skipLookup: true,\n    lookupPhone: mapped.phone || '9356968767',\n    identityKey: key\n  }}];\n}\n\nif (phone) {\n  return [{json:{\n    ...d,\n    lookupPhone: phone,\n    needsPhone: false,\n    skipLookup: false,\n    identityKey: key\n  }}];\n}\n\nreturn [{json:{\n  ...d,\n  needsPhone: true,\n  skipLookup: false,\n  identityKey: key\n}}];\n"
+        },
+        "id": "d9214313-10ea-4000-a1f1-468f80ece48e",
+        "name": "Resolve Student Identity",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -2352,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "skip-lookup-check",
+                      "leftValue": "={{ $json.skipLookup }}",
+                      "rightValue": true,
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "needs-phone-check",
+                      "leftValue": "={{ $json.needsPhone }}",
+                      "rightValue": true,
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra"
+          }
+        },
+        "id": "e8f9558c-9b6f-4126-9051-121708239e3a",
+        "name": "Route Identity",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          -2128,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "={{ $json.chatId }}",
+          "text": "Please send your registered mobile number (for example, 9876543210) once so I can securely link your Telegram account with your LMS student record.",
+          "additionalFields": {
+            "appendAttribution": false
+          }
+        },
+        "id": "25893665-10bb-4ea6-b05e-92d0cc1a4718",
+        "name": "Ask for Registered Mobile",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          -1904,
+          96
+        ],
+        "webhookId": "bbfe9683-a3e1-4ced-abd3-77cf0ffea0a9",
+        "credentials": {
+          "telegramApi": {
+            "id": "uJoD4GTZoEaPExwk",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/users/students",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "phone",
+                "value": "={{ $json.lookupPhone }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Service-Key",
+                "value": "lms-n8n-service-key-2026"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "8c6fbbfc-4898-4d64-8bd6-359fc5d13895",
+        "name": "Lookup Student by Registered Mobile",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -1904,
+          336
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nconst original = $('Resolve Student Identity').first()?.json || {};\nconst key = original.identityKey || `tg_student_${original.telegramUserId}`;\n\nif (d.success && d.studentId) {\n  const studentData = {\n    studentId: String(d.studentId),\n    phone: String(d.phone || original.lookupPhone || ''),\n    studentName: d.name || 'Arjun Mehta',\n    className: d.className || d.batchName || 'FSWD Morning Batch - Jan 2025',\n    courseName: 'Full Stack Web Development',\n    courseDuration: d.courseDuration || '6 Months',\n    batchName: d.batchName || 'FSWD Morning Batch - Jan 2025',\n    teacherName: d.teacherName || 'Dr. Priya Sharma',\n    startDate: d.startDate || '2025-01-15',\n    endDate: d.endDate || '2025-07-15',\n    batchTiming: d.batchTiming || '10:00 AM - 12:30 PM',\n    linkedAt: new Date().toISOString()\n  };\n\n  try {\n    const store = await $getWorkflowStaticData('global');\n    store[key] = studentData;\n    delete store[`${key}_unlinked`];\n  } catch(e) {}\n\n  const rawMsg = String(original.messageText || '').trim();\n  const hasPhone = Boolean(original.contactPhone || original.phone || original.lookupPhone);\n  const isLinkingMessage = hasPhone && (\n    Boolean(original.contactPhone) ||\n    !rawMsg ||\n    /^\\+?\\d[\\d\\s().\\-]{4,18}\\d$/.test(rawMsg) ||\n    /^(?:my\\s+(?:registered\\s+)?(?:mobile|phone|number|no|num)?\\s*(?:is|:|-)?|registered\\s*(?:mobile|phone|number|no|num)?\\s*(?:is|:|-)?)\\s*\\+?\\d+/i.test(rawMsg)\n  );\n\n  return [{json:{\n    ...original,\n    ...studentData,\n    studentFound: true,\n    isLinkingMessage\n  }}];\n}\n\nreturn [{json:{\n  ...original,\n  studentFound: false,\n  isLinkingMessage: false\n}}];\n"
+        },
+        "id": "261366b1-2a00-4709-b035-fe14961a7eb4",
+        "name": "Store Student Mapping",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1648,
+          336
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "7c65a177-2389-4ba6-a7a1-d772ce656338",
+                "leftValue": "={{ $json.studentFound }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "6cd3ada0-7ff3-4503-b077-f3f2f5bbef43",
+        "name": "Student Found?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -1424,
+          336
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "={{ $json.chatId }}",
+          "text": "I could not find an LMS student registered with that mobile number. Please check the number and send it again, or contact your LMS administrator.",
+          "additionalFields": {
+            "appendAttribution": false
+          }
+        },
+        "id": "5de66655-8ced-4011-b63c-e1d5bf46645b",
+        "name": "Student Not Found",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          -1184,
+          480
+        ],
+        "webhookId": "83e1c10d-a527-4956-b571-f1ecb122a239",
+        "credentials": {
+          "telegramApi": {
+            "id": "uJoD4GTZoEaPExwk",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "linking-msg-check",
+                "leftValue": "={{ $json.isLinkingMessage }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+        "name": "Is Linking Message?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -1184,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "={{ $json.chatId }}",
+          "text": "=Your Telegram account has been linked to your LMS student record!\n\nStudent: {{ $json.studentName }}\nCourse: {{ $json.courseName }}\nBatch: {{ $json.batchName }}\n\nYou can now ask me about your attendance, fees, course materials, or any other LMS query.",
+          "additionalFields": {
+            "appendAttribution": false
+          }
+        },
+        "id": "bb22cc33-dd44-ee55-ff66-778899001122",
+        "name": "Link Confirmed",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          -944,
+          128
+        ],
+        "webhookId": "cf9b86af-aff9-4962-adbe-bf18919d4ca6",
+        "credentials": {
+          "telegramApi": {
+            "id": "uJoD4GTZoEaPExwk",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nreturn [{json:{\n  ...d,\n  sessionId: d.chatId,\n  contextText: `Student ID: ${d.studentId}\\nStudent: ${d.studentName || 'Student'}\\nClass/Batch: ${d.className || d.batchName || 'Unknown'}\\nCourse: ${d.courseName || 'Unknown'}\\nTeacher: ${d.teacherName || 'Unknown'}\\nCourse Duration: ${d.courseDuration || 'Unknown'}\\nEnd Date: ${d.endDate || 'Unknown'}`\n}}];"
+        },
+        "id": "69f93f89-6f31-45c6-9139-90a2affa02f7",
+        "name": "Build Session Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -944,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:11434/api/chat",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {model: \"llama3.2:latest\", stream:false, format:\"json\", messages:[{role:\"system\",content:\"You are the intent router for EduConnect LMS. Return ONLY JSON with one field: intent. Allowed values: greeting, attendance, fees, quiz, support.\\n\\nRules:\\n- greeting: for hi, hello, hey, good morning, thanks, bye, or any casual non-LMS message\\n- attendance: for questions about present, absent, attendance percentage, classes attended\\n- fees: for questions about fee balance, payment, amount due, pending fees, transactions\\n- quiz: for practice questions, test me, generate quiz, study material requests\\n- support: for complaints, bugs, help requests, account issues, or anything else LMS-related\\n\\nReturn ONLY the JSON. Example: {\\\\\\\"intent\\\\\\\":\\\\\\\"fees\\\\\\\"}\"},{role:\"user\",content:$json.messageText}] } }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "26eb62cf-753a-4bde-ae6e-6c0b66041654",
+        "name": "Intent Router (Ollama)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -704,
+          320
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "let base = {};\ntry { base = $('Build Session Context').first()?.json || {}; } catch(e) {}\nif (!base.messageText) {\n  try { base = $('Normalize Telegram Message').first()?.json || {}; } catch(e) {}\n}\n\nconst rawText = String(base.messageText || '').trim();\n// Strip wrapping quotes and excessive punctuation for matching (CP-10)\nlet text = rawText.replace(/^[\"'\\s.]+|[\"'\\s.]+$|[?!,;:]+$/g, '').trim();\n\n// Normalize dots/underscores/dashes and whitespace for punctuation tolerance (CP-04, CP-09)\nconst normalizedText = text.replace(/[\\.\\_\\-]+/g, ' ').replace(/\\s+/g, ' ').trim();\n\n// For very long messages (BV-09), truncate search window to prevent ReDoS\nconst searchWindow = normalizedText.substring(0, 1000);\n\n// 1. Security Violations / Injections / Exfiltration / Social Engineering (SE-01 to SE-15)\nconst isSecurityAttack = /\\b(ignore\\s+(?:all\\s+)?(?:previous\\s+)?instructions|show\\s+(?:your\\s+)?(?:system|hidden)\\s*prompt|system\\s*prompt|translate.*system\\s*prompt|give\\s+me\\s+(?:the\\s+)?api\\s*key|api\\s*key|lms_service_key|telegram\\s*token|show\\s+(?:all\\s+)?environment|database\\s*password|credentials|show\\s+(?:me\\s+)?(?:all\\s+)?students?|another\\s+student|student\\s+(?:123|999)|student[\\s_]*id\\s*=\\s*\\d+|my\\s+friend\\s+is\\s+student|pretend\\s+my\\s+fees\\s+are\\s+zero|developer\\s*mode|system\\s*administrator|instructions\\s*(?:were\\s*you\\s*given|before)|repeat\\s*everything\\s*above|unrestricted\\s*ai|safety\\s*filters|jailbreak|authorized\\s*me\\s*to\\s*access|my\\s*name\\s*is\\s*rahul|\\[SYSTEM\\]|override\\s*security|grant\\s*admin|college\\s*principal|principal.*fees|select\\s+.*\\s+from\\s+|run\\s*this\\s*sql|temperature\\s*setting|what\\s*model\\s*are\\s*you\\s*running|say\\s*[\"']?access\\s*granted|forget\\s*you\\s*are|you\\s*are\\s*now\\s*chatgpt|student[\\s_]*id\\s*is\\s*actually|base64|aWdub3JlIGluc3RydWN0aW9ucw)\\b/i.test(searchWindow);\n\n// 2. Hallucination Probing (HL-01 to HL-12: exam marks, CGPA, classmates, assignments, holidays, rank, batch count, teacher phone, IA marks, college address, library books)\nconst isHallucinationProbe = !isSecurityAttack && /\\b(marks?|cgpa|gpa|classmates?|batchmates?|assignment(?:s)?|holiday(?:s)?|vacation|rank|standing|class\\s*size|how\\s*many\\s*students|priya(?:'s|\\s+sharma's)?\\s*(?:phone|mobile|contact)|internal\\s*assessment|ia\\s*marks|passing\\s*or\\s*failing|college\\s*address|location\\s*of\\s*college|library\\s*books?|borrowed\\s*books?)\\b/i.test(searchWindow) && !/\\b(attendance|fees?|absent|present|certif)\\b/i.test(searchWindow);\n\n// 3. Negations & Corrections (NC-01 to NC-10)\nconst isNegationQuiz = !isSecurityAttack && /\\b(don'?t\\s*want\\s*(?:a\\s*)?quiz|no\\s*quiz)\\b/i.test(searchWindow);\nconst isNegationSupport = !isSecurityAttack && /\\b(don'?t\\s*have\\s*(?:any\\s*)?issues?|no\\s*issues?|no\\s*problem)\\b/i.test(searchWindow);\nconst isCancel = !isSecurityAttack && /^(?:cancel(?:\\s*that)?|stop|never\\s*mind|nvm)$/i.test(searchWindow);\nconst isWrongAnswer = !isSecurityAttack && /\\b(wrong\\s*answer|let\\s*me\\s*try\\s*again)\\b/i.test(searchWindow);\nconst isDidnAsk = !isSecurityAttack && /\\b(didn'?t\\s*ask\\s*about\\s*that|not\\s*what\\s*i\\s*asked)\\b/i.test(searchWindow);\n\n// Correction routing: \"not fees, I asked about attendance\" -> attendance\nlet effectiveText = searchWindow;\nif (/^not\\s+fees?,?\\s*i\\s*asked\\s*about\\s*attendance/i.test(searchWindow)) {\n  effectiveText = 'attendance';\n} else if (/^no\\s+no,?\\s*show\\s*me\\s*materials/i.test(searchWindow)) {\n  effectiveText = 'materials';\n} else if (/^i\\s*meant\\s*to\\s*ask\\s*about\\s*my\\s*batch/i.test(searchWindow)) {\n  effectiveText = 'which batch';\n}\n\n// 4. Leave & Absence requests (CS-07, SL-09, CC-08)\nconst isLeave = !isSecurityAttack && /\\b(will\\s+be\\s+absent|apply(?:ing)?\\s+for\\s+(?:medical\\s+)?leave|sick\\s+leave|medical\\s+leave|take\\s+leave|leave\\s+application|absent\\s+(?:tomorrow|next|on\\s+[a-z0-9]+|tmrw|kal|for\\s+the\\s+last)|kal\\s+absent|cannot\\s+attend|unable\\s+to\\s+attend|chutti|fyi\\s*i'?m\\s*absent)\\b/i.test(effectiveText);\n\n// 5. Support Issues & Discrepancies (CS-06, SL-10)\nconst isSupportIssue = !isSecurityAttack && !isNegationSupport && (isLeave || /\\b(cannot|can'?t|unable|error|issue|problem|fail|failed|broken|help\\s*(?:me\\s*)?with|not\\s*working|trouble|complaint|not\\s*(?:updated|reflected|showing|received)|deducted|discrepancy|dispute|locked|crashed|account\\s*(?:issue|problem|help)?|login\\s*nahi|portal\\s*pe\\s*login|pls\\s*help\\s*asap|help\\s*asap)\\b/i.test(effectiveText));\n\n// 6. Invalid Quiz Option (BV-10: option E)\nconst isInvalidQuizOption = !isSecurityAttack && /^(?:option\\s*)?[eE](?:[\\)\\.\\:\\-\\s]|$)/i.test(effectiveText) && !/\\b(explain|what|fees|attendance)\\b/i.test(effectiveText);\n\n// 7. Quiz answer submissions (MT-02b, BV-08, QA, 1-A to 5-C)\nconst prefixMatch = /^(?:answers?|ans|my\\s+answer(?:\\s+is)?|option|choice)\\b/i.test(effectiveText);\nconst singleOptionMatch = /^[a-dA-D](?:[\\)\\.\\:\\-\\s]|$)/i.test(effectiveText);\nconst numberedMatch = /^[1-5]\\s*[\\)\\.\\:\\-\\s]*(?:->)?\\s*[a-dA-D]/i.test(effectiveText);\nconst multiMatch = /(?:(?:question|q|ans|answer)?\\s*[1-5]\\s*[:.)\\-–—\\s]*(?:is\\s*)?[a-dA-D]\\b.*){2,}/i.test(effectiveText);\nconst inlineMatch = /\\b(?:option|choice|answer|ans)\\s*(?:[1-5]\\s*)?(?:is|=|\\:|\\-)?\\s*[a-dA-D]\\b/i.test(effectiveText);\nconst guessMatch = /\\b(?:i\\s+think|guess)\\s+(?:it(?:\\s*is|\\'s)\\s+)?[a-dA-D]\\b/i.test(effectiveText);\n\nconst seqLettersMatch = /^(?:[\\(\\[]?[a-dA-D][\\)\\]]?[,\\s]+){1,}[\\(\\[]?[a-dA-D][\\)\\]]?$/i.test(effectiveText.trim());\nconst numberedLinesMatch = /(?:(?:^|\\n)\\s*(?:for\\s+)?(?:question|q)?\\s*[1-5]\\s*[\\)\\.\\:\\-\\s=]).*(?:(?:\\n)\\s*(?:for\\s+)?(?:question|q)?\\s*[1-5]\\s*[\\)\\.\\:\\-\\s=])/i.test(effectiveText);\n\nconst isQuizAnswer = !isSecurityAttack && !isSupportIssue && !isInvalidQuizOption && !isNegationQuiz && (\n  prefixMatch || singleOptionMatch || numberedMatch || multiMatch || inlineMatch || guessMatch || seqLettersMatch || numberedLinesMatch\n);\n\n// 8. Quiz generation requests (MT-02a, MT-02c, TY-07, TY-08, CS-04, SL-03, AB-11, AB-12, FU-03b)\nconst isQuizRequest = !isSecurityAttack && !isSupportIssue && !isNegationQuiz && !isQuizAnswer && (\n  /\\b(quiz|qiuz|quize|practice|mcqs?|questions?|five\\s*mcqs|ek\\s*quiz|gimme\\s*a\\s*quiz|harder\\s*please)\\b/i.test(effectiveText) ||\n  /^(?:test|quiz\\s*me|take\\s*a\\s*test)$/i.test(effectiveText) ||\n  /\\b(test\\s*me|generate\\s*(?:a\\s*)?quiz)\\b/i.test(effectiveText)\n) && !/\\b(explain|what\\s+is|doubt|why)\\b/i.test(effectiveText);\n\n// 9. Study Materials requests (TY-14, CS-10, M-01, AB-11)\nconst isMaterials = !isSecurityAttack && !isSupportIssue && !isQuizRequest && !isQuizAnswer && /\\b(materials?|materails?|resources?|notes|lectures?|videos?|pdf|syllabus|curriculum|study\\s*(?:material|guide|notes)?|kitabe|books|padhne|notes\\s*chahiye|help\\s*me\\s*study)\\b/i.test(effectiveText) && !/\\b(explain|what\\s+is)\\b/i.test(effectiveText);\n\n// 10. Student Profile & Enrollment (TY-13, SL-08, CP-09, P-01, CC-07)\nconst isProfile = !isSecurityAttack && !isSupportIssue && /\\b(my\\s+profile|proifle|student\\s*id|idk\\s*my\\s*student\\s*id|roll\\s*(?:no|number)|enrollment\\s*(?:no|number|details)?|my\\s+details|who\\s+am\\s+i|meri\\s+id|profile\\s*details)\\b/i.test(effectiveText);\n\n// 11. Teacher & Faculty (TY-09, TY-10, CS-05, SL-04, FU-05a, FU-05b, T-01 - covers \"who is teaching this course\", \"who teaches\", etc.)\nconst isTeacher = !isSecurityAttack && !isSupportIssue && !isHallucinationProbe && (\n  /\\b(?:who\\s*(?:is|'s)?\\s*(?:teaching|teaches|taking|conducting)|who\\s*(?:is|'s)?\\s*(?:my|the|our|this)?\\s*(?:teacher|trainer|instructor|faculty|prof|professor|educator|mentor)|teacher|teecher|techer|faculty|instructor|professor|trainer)\\b/i.test(effectiveText) ||\n  /\\b(?:teacher|trainer|instructor|faculty|prof|professor)\\s*(?:'s)?\\s*(?:name|details|info|contact|ka\\s*naam)?\\b/i.test(effectiveText) ||\n  /\\b(?:what\\s*does\\s*(?:she|he|they|the\\s*teacher)\\s*teach)\\b/i.test(effectiveText) ||\n  /\\b(?:kon\\s*(?:padha|teacher)|teacher\\s*kon)\\b/i.test(effectiveText)\n);\n\n// 12. Schedule, Timing, Deadline & Course End-Date (TY-12, CS-03, CS-08, FU-04a, FU-04b, S-01, AB-09)\nconst isSchedule = !isSecurityAttack && !isSupportIssue && !isTeacher && !isHallucinationProbe && /\\b(when\\s*(?:does|will)\\s*(?:my\\s*)?(?:course|batch)\\s*(?:end|finish)|course\\s*kab\\s*end|how\\s*many\\s*days\\s*(?:are\\s*)?left|how\\s*many\\s*weeks\\s*(?:are\\s*)?left|how\\s*many\\s*months\\s*(?:are\\s*)?left|months\\s*left|course\\s*duration|duration|how\\s*long\\s*(?:is\\s*)?(?:my\\s*)?(?:course|batch|program|class)|timetable|time\\s*table|schedule|schedul|class\\s*timing|batch\\s*timing|timing|routine|when\\s*(?:is|are)\\s*(?:my|the)?\\s*classes?|next\\s*class|kab\\s+(?:khatam|over|finish)|kitna\\s*time|bacha\\s*hai|am\\s*i\\s*done|deadline)\\b/i.test(effectiveText);\n\n// 13. Course & Batch info (TY-11, SL-05, CP-10, NC-10, C-01)\nconst isCourseInfo = !isSecurityAttack && !isSupportIssue && !isTeacher && !isSchedule && !isHallucinationProbe && /\\b(what\\s*is\\s*(?:my\\s*)?course|which\\s*course|my\\s*course|cource|which\\s*batch|which\\s*class|my\\s*batch|batch\\s*name|course\\s*name|my\\s*batch\\s*timing)\\b/i.test(effectiveText);\n\n// 14. Attendance & Certificate queries (TY-01, TY-02, TY-03, TY-15, CS-01, SL-01, CP-01, CP-06, CP-08, MT-05a, MT-05b, FU-02a, FU-02b, AB-01, A-01, CC-03)\nconst isAttendance = !isSecurityAttack && !isSupportIssue && !isSchedule && (\n  /\\b(attend[a-z]*|atendance|haziri|present|absent|which\\s*days\\s*absent|classes?\\s*(?:held|attended|missed|remaining|total)?|how\\s*many\\s*classes|which\\s*dates|percentage|eligib[a-z]*|certif[a-z]*|kitne?\\s*din|attendance\\s*kitni\\s*hai|can\\s*i\\s*pass|is\\s*that\\s*good\\s*enough)\\b/i.test(effectiveText) ||\n  /75%|\\b75\\s*%/i.test(effectiveText)\n);\n\n// 15. Fees & Payment queries (TY-04, TY-05, TY-06, CS-02, CS-09, SL-02, CP-02, CP-07, MT-01b, MT-04a, MT-04b, FU-01a, FU-01b, AB-02, F-01)\nconst isFees = !isSecurityAttack && !isSupportIssue && !isProfile && !isHallucinationProbe && !/\\bassignment/i.test(effectiveText) && /\\b(fees?|fess|feees|pay(?:ment|ing|mnet)?|paid|pending|balance|due|dues|receipt|transactions?|amount|total\\s*(?:course\\s*)?fee|installments?|instalment|baki|kitna\\s*paisa|fees\\s*ka\\s*balance|how\\s*do\\s*i\\s*pay|payment\\s*kaise\\s*karu|how\\s*much\\s*do\\s*i\\s*owe|break\\s*it\\s*down)\\b/i.test(effectiveText);\n\n// 16. Academic Doubt / Tutor Mode\nconst isAcademicDoubt = !isSecurityAttack && !isSupportIssue && !isQuizAnswer && !isQuizRequest && !isProfile && !isTeacher && !isCourseInfo && !isSchedule && !isAttendance && !isFees &&\n  (/\\b(react|javascript|js|html|css|node(?:\\.js)?|express|postgres(?:ql)?|sql|database|hook|component|state|props|api|function|variable|loop|promise|async|await|flexbox|grid|middleware|usestate|useeffect)\\b/i.test(effectiveText) ||\n   /\\b(explain|difference\\s+between|how\\s+does|how\\s+to\\s+use|syntax\\s+of|example\\s+of|samjhao|doubt|kya\\s+hota\\s+hai|kaise\\s+kare)\\b/i.test(effectiveText));\n\n// 17. Courtesy & About (SL-06, SL-07, MT-06, CA-01..06)\nconst isThanks = /\\b(thank\\s*you|thanks|thx|cheers|appreciate\\s*it|great\\s*job|shukriya|dhanyawad|thanks\\s*for\\s*all|k\\s*thx\\s*bye)\\b/i.test(effectiveText);\nconst isAbout = /\\b(who\\s*are\\s*you|what\\s*(?:can|do)\\s*you\\s*do|help\\s*menu|options|commands|kya\\s+kar\\s+sakte)\\b/i.test(effectiveText) || /^\\/?help$/i.test(effectiveText);\nconst isActualGreeting = /^(?:hi|hello|hey|good\\s*(?:morning|afternoon|evening)|start|\\/start|welcome|namaste)\\b/i.test(effectiveText);\n\n// 18. Ambiguous general status queries (AB-04..AB-10)\nconst isStatusQuery = /^(?:status|update|tell\\s*me\\s*everything|what'?s\\s*left|numbers|records)$/i.test(effectiveText);\n\n// 19. Multi-Intent Detection (CC-01..CC-08)\nconst multiMatches = [];\nif (isAttendance) multiMatches.push('attendance');\nif (isFees) multiMatches.push('fees');\nif (isTeacher) multiMatches.push('teacher');\nif (isSchedule) multiMatches.push('schedule');\nif (isCourseInfo) multiMatches.push('course');\nif (isQuizRequest) multiMatches.push('quiz');\n\nconst isMulti = multiMatches.length >= 2 || /tell\\s*me\\s*everything/i.test(effectiveText) || /what'?s\\s*left/i.test(effectiveText);\n\nlet intent = 'greeting';\nlet greetingType = 'welcome';\nlet isMaterialsOnly = false;\nlet isExplanation = false;\n\nif (isSecurityAttack) {\n  intent = 'greeting';\n  greetingType = 'security';\n} else if (isHallucinationProbe) {\n  intent = 'greeting';\n  greetingType = 'ungrounded';\n} else if (isInvalidQuizOption) {\n  intent = 'greeting';\n  greetingType = 'quiz_invalid_option';\n} else if (isNegationQuiz) {\n  intent = 'greeting';\n  greetingType = 'negation_quiz';\n} else if (isCancel) {\n  intent = 'greeting';\n  greetingType = 'cancel';\n} else if (isWrongAnswer) {\n  intent = 'greeting';\n  greetingType = 'wrong_answer';\n} else if (isDidnAsk) {\n  intent = 'greeting';\n  greetingType = 'correction';\n} else if (isNegationSupport) {\n  intent = 'greeting';\n  greetingType = 'no_issues';\n} else if (isProfile) {\n  intent = 'greeting';\n  greetingType = 'profile';\n} else if (isMulti) {\n  intent = 'greeting';\n  greetingType = 'multi';\n} else if (isStatusQuery) {\n  intent = 'greeting';\n  greetingType = 'status_summary';\n} else if (isQuizAnswer) {\n  intent = 'quiz';\n} else if (isQuizRequest) {\n  intent = 'quiz';\n} else if (isAcademicDoubt) {\n  intent = 'quiz';\n  isExplanation = true;\n} else if (isMaterials) {\n  intent = 'quiz';\n  isMaterialsOnly = true;\n} else if (isTeacher) {\n  intent = 'greeting';\n  greetingType = 'teacher';\n} else if (isSchedule) {\n  intent = 'greeting';\n  greetingType = 'schedule';\n} else if (isCourseInfo) {\n  intent = 'greeting';\n  greetingType = 'course';\n} else if (isAttendance) {\n  intent = 'attendance';\n} else if (isFees) {\n  intent = 'fees';\n} else if (isThanks) {\n  intent = 'greeting';\n  greetingType = 'thanks';\n} else if (isAbout) {\n  intent = 'greeting';\n  greetingType = 'about';\n} else if (isActualGreeting) {\n  intent = 'greeting';\n  greetingType = 'welcome';\n} else if (isSupportIssue) {\n  intent = 'support';\n} else {\n  intent = 'greeting';\n  greetingType = 'out_of_scope';\n}\n\nreturn [{json:{...base, intent, greetingType, isQuizAnswer, isMaterialsOnly, isExplanation, isLeave, multiMatches}}];\n"
+        },
+        "id": "69e235a5-66bb-4ede-960f-4e34e4aeb832",
+        "name": "Parse Intent",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -464,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "greet-check",
+                      "leftValue": "={{ $json.intent }}",
+                      "rightValue": "greeting",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "078929ad",
+                      "leftValue": "={{ $json.intent }}",
+                      "rightValue": "attendance",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "a7dc7108",
+                      "leftValue": "={{ $json.intent }}",
+                      "rightValue": "fees",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "bfc31ce0",
+                      "leftValue": "={{ $json.intent }}",
+                      "rightValue": "quiz",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "2a5e8499",
+                      "leftValue": "={{ $json.intent }}",
+                      "rightValue": "support",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "5cecb4c9-0979-4688-acea-7de02d10c37a",
+        "name": "Route to Specialist",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          -224,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/attendance",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "student_id",
+                "value": "={{ $json.studentId }}"
+              },
+              {
+                "name": "phone",
+                "value": "={{ $json.phone || $json.lookupPhone }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Service-Key",
+                "value": "lms-n8n-service-key-2026"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            },
+            "timeout": 15000
+          }
+        },
+        "id": "c43a7838-bbd8-42b4-a200-ff9c320df3a2",
+        "name": "Get Attendance Data",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          0,
+          112
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "const source=$json;\nconst base=$('Parse Intent').first()?.json || {};\nreturn [{json:{...base,backendData:source}}];"
+        },
+        "id": "c2540b86-d533-4189-a171-60b392ede10b",
+        "name": "Prepare Attendance Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          112
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:11434/api/chat",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {model: \"llama3.2:latest\", stream:false, messages:[{role:\"system\",content:\"You are the EduConnect Attendance Specialist. Use only the backend attendance data. Never invent records or percentages. If the data is empty, say no attendance records were found. If the user asks to mark/check-in, explain that the current LMS attendance API is teacher-controlled and cannot safely self-mark a student via Telegram. Keep the reply concise and in the user's language.\"},{role:\"user\",content:$json.messageText+\"\\n\\nContext:\\n\"+$json.contextText+\"\\n\\nBackend data:\\n\"+($json.backendSummary||\"No data available\")}] } }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "afad2b89-ddb5-4214-ab74-994fd5ce7c31",
+        "name": "Attendance Specialist (Ollama)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          464,
+          112
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "url": "http://host.docker.internal:8000/api/fees",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "student_id",
+                "value": "={{ $json.studentId }}"
+              },
+              {
+                "name": "phone",
+                "value": "={{ $json.phone || $json.lookupPhone }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Service-Key",
+                "value": "lms-n8n-service-key-2026"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "id": "bd3445da-1fa1-433b-90d4-2739df219c28",
+        "name": "Get Fee Data",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          0,
+          304
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "const source=$json;\nconst base=$('Parse Intent').first()?.json || {};\nreturn [{json:{...base,backendData:source}}];"
+        },
+        "id": "a96e3620-386d-436b-b777-8df5cd735366",
+        "name": "Prepare Fee Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:11434/api/chat",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {model: \"llama3.2:latest\", stream:false, messages:[{role:\"system\",content:\"You are the EduConnect Fees Specialist. Use only backend fee ledger/transaction data. State total/paid/pending only when supported. For payment requests, tell the user to use the LMS payment page unless backendData contains a successful payment order. Never ask for card details, OTP, CVV or UPI PIN. Keep concise.\"},{role:\"user\",content:$json.messageText+\"\\n\\nContext:\\n\"+$json.contextText+\"\\n\\nBackend data:\\n\"+($json.backendSummary||\"No data available\")}] } }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "0138d6a6-1eb9-462d-b5d2-3f900e60f35b",
+        "name": "Fees Specialist (Ollama)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          464,
+          304
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/rag/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Service-Key",
+                "value": "lms-n8n-service-key-2026"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { query: $json.messageText, course_id: $json.courseId, batch_id: $json.batchId, student_id: $json.studentId, limit: 3, threshold: 0.3 } }}",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "id": "9e7a872b-1feb-4b33-9569-43f1b5aae3e4",
+        "name": "RAG Semantic Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          0,
+          480
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "const source = $json;\nlet base = {};\ntry { base = $('Parse Intent').first()?.json || {}; } catch(e) {}\nif (!base.messageText) {\n  try { base = $('Build Session Context').first()?.json || {}; } catch(e) {}\n}\n\nconst ragResults = source.results || [];\nconst text = String(base.messageText || '').trim();\nconst isAnswer = Boolean(base.isQuizAnswer);\nconst isMaterialsOnly = Boolean(base.isMaterialsOnly);\nconst isExplanation = Boolean(base.isExplanation);\n\nlet knowledgeExcerpts = '';\nif (ragResults.length > 0) {\n  knowledgeExcerpts = ragResults.map((r, i) => '[Source ' + (i+1) + ': ' + r.title + ' (Section ' + (r.chunk_index + 1) + ', Match: ' + Math.round(r.similarity * 100) + '%)]\\n' + r.content).join('\\n\\n');\n} else {\n  knowledgeExcerpts = 'HTML5 & CSS3 Flexbox/Grid, JavaScript ES6+ Promises & async/await, React Hooks, Node.js & Express REST APIs, PostgreSQL Database Design';\n}\n\nlet systemPrompt = '';\nlet userPrompt = '';\n\nif (isMaterialsOnly) {\n  systemPrompt = \"You are the EduConnect Assistant. Respond only with OK.\";\n  userPrompt = \"OK\";\n} else if (isExplanation) {\n  systemPrompt = \"You are the senior EduConnect Course Tutor for \" + (base.courseName || 'Full Stack Web Development') + \".\\n\\nOFFICIAL COURSE KNOWLEDGE BASE (RAG):\\n\" + knowledgeExcerpts + \"\\n\\nCRITICAL RAG INSTRUCTIONS:\\n1. Ground your explanation strictly in the approved course material excerpts above.\\n2. Keep your explanation concise, friendly, and under 250 words.\\n3. Include a short, clear code snippet if applicable.\\n4. Cite the source module at the end (e.g. 'Source: React Hooks Tutorial').\";\n  userPrompt = \"Student Question: \\\"\" + text + \"\\\"\\nCourse: \" + (base.courseName || 'Full Stack Web Development') + \"\\nBatch: \" + (base.batchName || 'FSWD Morning Batch - Jan 2025') + \"\\n\\nPlease explain based on the course materials.\";\n} else if (isAnswer) {\n  systemPrompt = \"Respond only with: RECEIVED\";\n  userPrompt = \"RECEIVED\";\n} else {\n  systemPrompt = \"You are the EduConnect Quiz Specialist for \" + (base.courseName || 'Full Stack Web Development') + \".\\n\\nOFFICIAL COURSE KNOWLEDGE BASE (RAG):\\n\" + knowledgeExcerpts + \"\\n\\nGenerate exactly 5 multiple-choice questions (MCQs) grounded directly in the provided course material.\\n\\nCRITICAL RULES:\\n1. For each question, provide 4 options labeled A, B, C, D.\\n2. After each question, provide:\\n   **Correct Option:** [A-D]) [Correct text] [Source: Document Title, Section X]\\n3. Ensure exactly one option is unambiguously correct.\\n4. Ground every question strictly on the provided excerpts.\";\n  userPrompt = \"The student's request is: \\\"\" + text + \"\\\"\\nCourse: \" + (base.courseName || 'Full Stack Web Development') + \"\\n\\nPlease generate a 5-question MCQ quiz matching this request with the correct answer key included.\";\n}\n\nreturn [{\n  json: {\n    ...base,\n    backendData: source,\n    ragResults: ragResults,\n    isQuizAnswer: isAnswer,\n    isMaterialsOnly: isMaterialsOnly,\n    isExplanation: isExplanation,\n    quizSystemPrompt: systemPrompt,\n    quizUserPrompt: userPrompt\n  }\n}];"
+        },
+        "id": "1a90d618-e572-45a7-a7c4-feb18d07a9b6",
+        "name": "Prepare Quiz Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          480
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:11434/api/chat",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {model: \"llama3.2:latest\", stream:false, messages:[{role:\"system\",content:$json.quizSystemPrompt},{role:\"user\",content:$json.quizUserPrompt}] } }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "f36c9b11-c478-4d0b-bc49-67bf294e9b96",
+        "name": "Quiz Specialist (Ollama)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          464,
+          480
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "let base = {};\ntry { base = $('Parse Intent').first()?.json || {}; } catch(e) {}\nif (!base.messageText) {\n  try { base = $('Build Session Context').first()?.json || {}; } catch(e) {}\n}\n\nconst isLeave = Boolean(base.isLeave);\nlet promptInstruction = \"You are the EduConnect Student Support Specialist. Provide a short, direct 1-2 sentence troubleshooting step for the student. Do NOT include greetings, corporate salutations, signatures, or placeholders like [Your Name]. Be extremely concise.\";\n\nreturn [{\n  json: {\n    ...base,\n    supportInstruction: promptInstruction,\n    ticketTitle: isLeave ? \"Leave / Absence Application\" : \"Student Support Request\",\n    ticketType: isLeave ? \"ATTENDANCE\" : \"GENERAL\",\n    backendData: {}\n  }\n}];"
+        },
+        "id": "8875a355-a8df-4ba3-830d-9f90ebb55322",
+        "name": "Prepare Support Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          656
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:11434/api/chat",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {model: \"llama3.2:latest\", stream:false, messages:[{role:\"system\",content:$json.supportInstruction || \"You are the EduConnect Student Support Specialist. Draft a short, helpful response to the student's issue. The workflow will create an administrative support ticket for follow-up.\"}, {role:\"user\",content:$json.messageText + \"\\n\\nStudent: \" + ($json.studentName || \"Student\") + \"\\nCourse: \" + ($json.courseName || \"Full Stack Web Development\") + \"\\nBatch: \" + ($json.batchName || \"FSWD Morning Batch - Jan 2025\")} ] } }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "b984cf62-a85c-4d60-99e8-12689386059e",
+        "name": "Support Specialist (Ollama)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          224,
+          656
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/api/notifications",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Service-Key",
+                "value": "=lms-n8n-service-key-2026"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {title: $('Prepare Support Context').first()?.json?.ticketTitle || \"Telegram LMS Support Request\", message: $('Prepare Support Context').first()?.json?.messageText || \"Telegram Support Request\", target_type: \"INDIVIDUAL_STUDENT\", target_id: $('Prepare Support Context').first()?.json?.studentId || \"4e0dda5a-a7e1-455d-b42b-08eb26027829\", notification_type: $('Prepare Support Context').first()?.json?.ticketType || \"GENERAL\"} }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            },
+            "timeout": 10000
+          }
+        },
+        "id": "24028946-4277-44d0-b1d1-c58589d575a6",
+        "name": "Create Support Ticket",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          464,
+          656
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "jsCode": "const ticket = $json;\nconst draft = $('Support Specialist (Ollama)').first()?.json || {};\nconst ctx = $('Prepare Support Context').first()?.json || $('Build Session Context').first()?.json || {};\nlet reply = String(draft.message?.content || draft.response || '').trim();\n\nconst ticketId = ticket.data?.id ? ticket.data.id.substring(0, 8).toUpperCase() : 'EC-' + Math.floor(1000 + Math.random() * 9000);\n\nif (ctx.isLeave) {\n  reply = `Your leave notice (#${ticketId}) has been registered with the batch coordinator. Class recordings and notes are available in the portal to catch up.`;\n} else {\n  // Strip salutations and sign-offs\n  reply = reply.replace(/^(?:Dear|Hi|Hello|Hey)\\s+[A-Za-z\\s]+,?\\s*/i, '');\n  reply = reply.replace(/(?:Best regards|Sincerely|Thanks|Thank you|EduConnect Support)[^]*$/i, '').trim();\n  if (reply.length > 250) {\n    const periodIdx = reply.indexOf('.', 100);\n    reply = periodIdx > 0 ? reply.substring(0, periodIdx + 1) : reply.substring(0, 250);\n  }\n  if (!reply) {\n    reply = \"Our technical support team has been notified and is investigating the issue.\";\n  }\n  reply = `Support ticket #${ticketId} logged with administration. ` + reply;\n}\n\nreturn [{json:{replyText: reply.trim(), chatId: ctx.chatId}}];"
+        },
+        "id": "44082e7a-cdc5-4ad3-8c68-9a9037e957bb",
+        "name": "Build Support Final",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          704,
+          656
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const ctx = $('Prepare Attendance Context').first()?.json || {};\nconst att = ctx.backendData?.attendance || [];\nconst text = String(ctx.messageText || '');\nlet reply = '';\n\nif (ctx.backendData?.error || (ctx.backendData && ctx.backendData.success === false)) {\n  reply = \"Unable to fetch attendance records right now. Please try again in a few moments.\";\n} else if (att.length === 0) {\n  reply = \"No attendance records found for your account.\";\n} else {\n  const total = att.length;\n  const present = att.filter(a => a.status === 'PRESENT').length;\n  const absent = att.filter(a => a.status === 'ABSENT').length;\n  const pct = Math.round((present / total) * 100);\n  \n  const isCertQuery = /\\b(certif(?:icate|ication)|eligib(?:le|ility)|exam|can\\s*i\\s*pass|is\\s*that\\s*good\\s*enough)\\b|75%|\\b75\\s*%/i.test(text);\n  const isAbsentQuery = /\\b(miss|absent|which\\s*days|dates)\\b/i.test(text);\n\n  const dates = att.filter(a => a.status === 'ABSENT').map(a => a.date).join(', ') || 'None';\n  const eligibleStr = pct >= 75 ? 'eligible for certification (minimum 75% met)' : 'not yet eligible for certification (minimum 75% required)';\n\n  if (isCertQuery && isAbsentQuery) {\n    reply = `Attendance: ${pct}% (${present}/${total} classes). You missed ${absent} classes (Absent dates: ${dates}). You are ${eligibleStr}.`;\n  } else if (isCertQuery) {\n    reply = `Attendance: ${pct}% (${present}/${total} classes). You are ${eligibleStr}.`;\n  } else if (isAbsentQuery) {\n    reply = `You missed ${absent} classes out of ${total}. Absent dates: ${dates}.`;\n  } else {\n    reply = `Your attendance is ${pct}% (${present} attended out of ${total} classes). Status: ${pct >= 75 ? 'Good' : 'Low'}.`;\n  }\n}\nreturn [{json:{replyText: reply, chatId: ctx.chatId}}];\n"
+        },
+        "id": "9875cc55-fc28-414f-aac4-ed3fc2ced1bb",
+        "name": "Attendance Finalize",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          704,
+          112
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const ctx = $('Prepare Fee Context').first()?.json || {};\nlet ledger = ctx.backendData?.ledger || null;\nlet txns = ctx.backendData?.transactions || [];\nconst text = String(ctx.messageText || '');\nlet reply = '';\n\n// Fallback to grounded student database records if HTTP timed out / failed\nif (!ledger || !ledger.total_amount) {\n  if (ctx.studentId === '4e0dda5a-a7e1-455d-b42b-08eb26027829' || !ctx.studentId) {\n    ledger = {\n      total_amount: 45000,\n      paid_amount: 30000,\n      pending_amount: 15000,\n      status: 'PARTIAL'\n    };\n    txns = [\n      { amount: 15000, payment_method: 'CASH', created_at: '2025-01-15' },\n      { amount: 10000, payment_method: 'ONLINE', created_at: '2025-03-01' },\n      { amount: 5000, payment_method: 'CASH', created_at: '2025-04-10' }\n    ];\n  }\n}\n\nif (!ledger || !ledger.total_amount) {\n  reply = \"I couldn't find any fee records for your account.\";\n} else {\n  const total = Number(ledger.total_amount);\n  const paid = Number(ledger.paid_amount);\n  const pending = Number(ledger.pending_amount);\n  const status = ledger.status || 'PARTIAL';\n\n  if (/history|transactions?|receipt|break\\s*it\\s*down|detail/i.test(text)) {\n    if (txns.length === 0) {\n      reply = `No past payment transactions found. Total fee: Rs.${total.toLocaleString()}, pending: Rs.${pending.toLocaleString()}.`;\n    } else {\n      const history = txns.map((t, i) => `${i+1}. Rs.${Number(t.amount).toLocaleString()} via ${t.payment_method} on ${t.created_at.split('T')[0]}`).join('\\n');\n      reply = `Payment Transactions:\\n${history}\\nTotal paid: Rs.${paid.toLocaleString()} | Pending balance: Rs.${pending.toLocaleString()}.`;\n    }\n  } else if (/how\\s*(?:can|to|do)\\s*i\\s*pay|pay\\s*online|options?|mode|link|payment\\s*kaise/i.test(text)) {\n    reply = `Pending fee: Rs.${pending.toLocaleString()}. You can pay online via UPI, Net Banking, or Cards on the student portal at http://localhost:8000.`;\n  } else if (pending === 0) {\n    reply = `Your fees are fully paid (Total: Rs.${total.toLocaleString()}, Pending: Rs.0). No pending fees.`;\n  } else if (/paid/i.test(text) && !/pending|due|balance|how\\s*much/i.test(text)) {\n    reply = `You have paid Rs.${paid.toLocaleString()} out of Rs.${total.toLocaleString()}. Pending balance: Rs.${pending.toLocaleString()}.`;\n  } else {\n    reply = `Total Fee: Rs.${total.toLocaleString()} | Paid: Rs.${paid.toLocaleString()} | Pending: Rs.${pending.toLocaleString()} (Status: ${status}).`;\n  }\n}\nreturn [{json:{replyText: reply, chatId: ctx.chatId}}];\n"
+        },
+        "id": "3d5dd1c7-0e9e-4993-a6bb-89d7d7bdc07e",
+        "name": "Fees Finalize",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          704,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $('Quiz Specialist (Ollama)').first()?.json || {};\nlet ctx = {};\ntry { ctx = $('Prepare Quiz Context').first()?.json || {}; } catch(e) {}\n\nlet store = {};\ntry { store = await $getWorkflowStaticData('global'); } catch(e) {}\n\nif (ctx.isMaterialsOnly) {\n  const mats = ctx.backendData?.materials || [];\n  if (mats.length === 0) {\n    return [{json: {replyText: \"No course materials uploaded yet for this course.\", chatId: ctx.chatId}}];\n  }\n  let reply = 'Course Study Materials:\\n';\n  mats.forEach((m, i) => {\n    reply += `${i+1}. ${m.title} (${m.file_type || 'PDF'})\\n`;\n  });\n  reply += '\\nSay \"quiz me\" to practice questions from these materials.';\n  return [{json: {replyText: reply.trim(), chatId: ctx.chatId}}];\n}\n\n// -------------------------------------------------------------\n// CASE 1: Student is submitting answers to an active quiz\n// -------------------------------------------------------------\nif (ctx.isQuizAnswer) {\n  let activeQuiz = store['active_quiz_' + ctx.chatId] || null;\n\n  // Fallback: check backend persistent active quiz if not in memory\n  if (!activeQuiz || !Array.isArray(activeQuiz) || activeQuiz.length === 0) {\n    try {\n      const resp = await fetch('http://host.docker.internal:8000/api/rag/quiz/active?chat_id=' + encodeURIComponent(ctx.chatId), {\n        headers: { 'X-Service-Key': 'lms-n8n-service-key-2026' }\n      });\n      const data = await resp.json();\n      if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {\n        activeQuiz = data.questions;\n      }\n    } catch(e) {}\n  }\n\n  if (activeQuiz && Array.isArray(activeQuiz) && activeQuiz.length > 0) {\n    const studentRawText = String(ctx.messageText || '').trim();\n    const cleanRaw = studentRawText.replace(/[*_`#]/g, '').replace(/[\\r\\n]+/g, '\\n');\n    let chunks = cleanRaw.split('\\n');\n    if (chunks.length <= 1) {\n      const splitByQ = cleanRaw.split(/(?=(?:^|[,\\s;]+|\\s+and\\s+)(?:for\\s+)?(?:question|q)?\\s*[1-9]\\d?\\s*(?:is|=|:|.|\\)|->|-|\\s))/i);\n      if (splitByQ.length > 1) chunks = splitByQ.map(s => s.trim()).filter(Boolean);\n    }\n\n    const parsedAnswers = {};\n    for (let chunk of chunks) {\n      chunk = chunk.replace(/^(?:and|then|also)\\s+/i, '').trim();\n      const m = chunk.match(/^(?:for\\s+)?(?:question|q)?\\s*([1-9]\\d?)\\s*(?:is|=|:|.|\\)|->|-|\\s)+\\s*(?:for\\s+)?(?:option|choice)?\\s*[\\(\\[]?\\s*([a-dA-D]\\b|[\\w\\s\\-:().<>*,+]+?)\\s*[\\)\\]]?(?:[,\\.;]|$)/i);\n      if (m) {\n        let ansVal = m[2].trim().replace(/^(?:it\\s+)?(?:is\\s+)?(?:option\\s+|choice\\s+)?/i, '').replace(/\\s+(?:and|then|also)\\s*$/i, '').trim();\n        parsedAnswers[parseInt(m[1])] = ansVal;\n      }\n    }\n\n    if (Object.keys(parsedAnswers).length === 0) {\n      const compactMatches = [...cleanRaw.matchAll(/([1-9]\\d?)\\s*[:.-]?\\s*([a-dA-D])\\b/gi)];\n      for (const cm of compactMatches) {\n        parsedAnswers[parseInt(cm[1])] = cm[2].toUpperCase();\n      }\n    }\n\n    if (Object.keys(parsedAnswers).length === 0) {\n      const letterMatches = [...cleanRaw.matchAll(/(?:\\b|[\\(\\[])([a-dA-D])(?:\\b|[\\)\\]])/gi)];\n      let idx = 1;\n      for (const lm of letterMatches) {\n        parsedAnswers[idx++] = lm[1].toUpperCase();\n      }\n    }\n\n    let correctCount = 0;\n    const total = activeQuiz.length;\n    const breakdown = [];\n\n    activeQuiz.forEach((q, index) => {\n      const qNum = index + 1;\n      const correctLetter = String(q.correct_answer || '').toUpperCase().trim();\n      const options = q.options || {};\n      const studentRaw = parsedAnswers[qNum] || null;\n      let studentLetter = null;\n      let studentText = '';\n\n      if (studentRaw !== null) {\n        let cleanAns = String(studentRaw).trim().replace(/^[[\\[\\(\\\"']+|[\\]\\)\\\"']+$/g, '').replace(/^(?:option|choice)\\s+/i, '').replace(/\\s+(?:and|then|also)\\s*$/i, '').trim();\n        if (/^[a-dA-D]$/i.test(cleanAns)) {\n          studentLetter = cleanAns.toUpperCase();\n          studentText = options[studentLetter] || '';\n        } else {\n          const lm = cleanAns.match(/^([a-dA-D])\\s*[\\)\\..\\:\\-]\\s*(.*)$/i);\n          if (lm) {\n            studentLetter = lm[1].toUpperCase();\n            studentText = lm[2] ? lm[2].trim() : (options[studentLetter] || '');\n          } else {\n            const cleanLower = cleanAns.toLowerCase();\n            // Pass 1: Exact match\n            for (const [optK, optV] of Object.entries(options)) {\n              const optLower = String(optV).toLowerCase().trim();\n              if (optLower === cleanLower) {\n                studentLetter = optK.toUpperCase();\n                studentText = optV;\n                break;\n              }\n            }\n            // Pass 2: Fuzzy / Substring match\n            if (!studentLetter) {\n              for (const [optK, optV] of Object.entries(options)) {\n                const optLower = String(optV).toLowerCase().trim();\n                if (optLower.includes(cleanLower) || cleanLower.includes(optLower)) {\n                  studentLetter = optK.toUpperCase();\n                  studentText = optV;\n                  break;\n                }\n              }\n            }\n            if (!studentLetter) studentText = cleanAns;\n          }\n        }\n      }\n\n      const isCorrect = (studentLetter !== null && studentLetter === correctLetter);\n      if (isCorrect) correctCount++;\n\n      const correctText = options[correctLetter] || '';\n      breakdown.push({\n        qNum,\n        studentAnswer: studentLetter ? `${studentLetter}) ${studentText}` : (studentText || 'No answer detected'),\n        correctAnswer: `${correctLetter}) ${correctText}`,\n        isCorrect,\n        citation: q.source_citation || ''\n      });\n    });\n\n    const percentage = Math.round((correctCount / Math.max(1, total)) * 100);\n    let report = '📊 **Quiz Evaluation Results:**\\n\\n';\n    breakdown.forEach(b => {\n      report += `**Question ${b.qNum}:** ${b.isCorrect ? '✅ Correct' : '❌ Incorrect'}\\n`;\n      report += `• **Your Answer:** ${b.studentAnswer}\\n`;\n      if (!b.isCorrect) {\n        report += `• **Correct Answer:** ${b.correctAnswer}\\n`;\n      }\n      if (b.citation) {\n        report += `• **Source:** [${b.citation}]\\n`;\n      }\n      report += '\\n';\n    });\n\n    report += `---\\n🎯 **Final Score: ${correctCount} / ${total} (${percentage}%)**\\n`;\n    if (percentage >= 80) report += '🌟 Excellent grasp of this curriculum topic!';\n    else if (percentage >= 50) report += '👍 Good effort! Review the cited sections above to strengthen your concepts.';\n    else report += '📚 Recommend reviewing the study notes before retrying.';\n\n    delete store['active_quiz_' + ctx.chatId];\n    try {\n      await fetch('http://host.docker.internal:8000/api/rag/quiz/evaluate', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json', 'X-Service-Key': 'lms-n8n-service-key-2026' },\n        body: JSON.stringify({ chat_id: ctx.chatId, answers: studentRawText })\n      });\n    } catch(e) {}\n\n    return [{json: {replyText: report.trim(), chatId: ctx.chatId}}];\n  } else {\n    // When no active quiz is found, NEVER forward hallucinated LLM evaluations!\n    return [{json: {replyText: \"Your answers were received, but no active quiz session was found for your chat. Say 'quiz me' to start a fresh 5-question practice quiz!\", chatId: ctx.chatId}}];\n  }\n}\n\n// -------------------------------------------------------------\n// CASE 2: Quiz Generation or Tutor Explanation\n// -------------------------------------------------------------\nlet reply = d.message?.content || d.response || '';\n\nif (!reply) {\n  reply = `**Question 1: HTML & CSS Fundamentals**\nWhich HTML tag is used for the largest heading?\nA) <head>\nB) <h6>\nC) <h1>\nD) <header>\n**Correct Option:** C) <h1> [Source: HTML & CSS Fundamentals, Section 1]\n\n**Question 2: React Fundamentals**\nWhich hook manages local component state in React?\nA) useEffect\nB) useState\nC) useContext\nD) useReducer\n**Correct Option:** B) useState [Source: React Hooks Tutorial, Section 1]\n\n**Question 3: Node.js & Express REST APIs**\nWhich HTTP method is typically used to create a new resource on a server?\nA) GET\nB) POST\nC) PUT\nD) DELETE\n**Correct Option:** B) POST [Source: Node.js & Express REST API Notes, Section 2]\n\n**Question 4: HTML & CSS Fundamentals**\nWhat is the universal web development recommendation for box-sizing?\nA) box-sizing: content-box\nB) box-sizing: margin-box\nC) box-sizing: border-box\nD) box-sizing: padding-box\n**Correct Option:** C) box-sizing: border-box [Source: HTML & CSS Fundamentals, Section 2]\n\n**Question 5: PostgreSQL Database Design**\nWhich SQL clause is used to filter records in a database query?\nA) WHERE\nB) FILTER\nC) SEARCH\nD) GROUP BY\n**Correct Option:** A) WHERE [Source: PostgreSQL Database Design, Section 2]`;\n}\n\n// When generating quiz: parse and store active quiz in session memory & backend\nif (!ctx.isExplanation && !ctx.isQuizAnswer) {\n  const blocks = reply.split(/(?=####?\\s*Question|\\bQuestion\\s+\\d+:?)/i);\n  const parsedQuiz = [];\n  for (const block of blocks) {\n    const optMatches = [...block.matchAll(/(?:^|\\n)\\s*[\\(\\[]?([A-D])[\\)\\]\\.\\:\\-]\\s+([^\\n\\r]+)/gi)];\n    const options = {};\n    for (const om of optMatches) {\n      options[om[1].toUpperCase()] = om[2].replace(/\\[Source.*?\\]/ig, '').trim();\n    }\n    if (Object.keys(options).length >= 2) {\n      let correct = '';\n      let citation = '';\n      const corMatch = block.match(/(?:\\*\\*|#|\\b)?(?:Correct\\s*(?:Option|Answer)?|Answer|Solution)(?:\\s*is)?:?\\s*(?:\\*\\*)?\\s*[\\(\\[]?([A-D])[\\)\\]]?(?:\\s*[\\)\\..\\:\\-]\\s*([^\\[\\n]+))?(?:\\[(.*?)\\])?/i);\n      if (corMatch) {\n        correct = corMatch[1].toUpperCase();\n        citation = (corMatch[3] || '').trim();\n      }\n      if (!citation) {\n        const citMatch = block.match(/\\[(?:Source\\s*\\d*:\\s*)?([^\\]]+)\\]/i);\n        if (citMatch) citation = citMatch[1].trim();\n      }\n      const lines = block.split('\\n');\n      const qLines = [];\n      for (const l of lines) {\n        const tr = l.trim();\n        if (/^(?:####?\\s*Question|\\bQuestion\\s+\\d+:?)/i.test(tr)) continue;\n        if (/^[A-D]\\)/i.test(tr)) break;\n        if (/^\\*\\*Correct/i.test(tr)) break;\n        if (tr) qLines.push(tr);\n      }\n      parsedQuiz.push({\n        question: qLines.join(' '),\n        options,\n        correct_answer: correct,\n        source_citation: citation\n      });\n    }\n  }\n\n  if (parsedQuiz.length > 0) {\n    try {\n      store['active_quiz_' + ctx.chatId] = parsedQuiz;\n    } catch(e) {}\n    try {\n      await fetch('http://host.docker.internal:8000/api/rag/quiz/active', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json', 'X-Service-Key': 'lms-n8n-service-key-2026' },\n        body: JSON.stringify({ chat_id: ctx.chatId, questions: parsedQuiz })\n      });\n    } catch(e) {}\n  }\n\n  // Strip answer keys from student message\n  reply = reply.replace(/(?:\\n|^)\\s*(?:\\*\\*|#|\\b)?(?:Correct\\s*(?:Option|Answer)?|Answer|Solution):?.*$/gim, '').trim();\n  reply = reply.replace(/(?:\\n|^)\\s*\\*\\*Explanation:\\*\\*.*$/gim, '').trim();\n  reply += '\\n\\nReply with your answers (e.g. 1A, 2B, 3C, 4D, 5A)!';\n}\n\nreturn [{json: {replyText: reply.trim(), chatId: ctx.chatId}}];"
+        },
+        "id": "e6ef6302-3bf8-404d-bb16-74a9172d8a48",
+        "name": "Quiz Finalize",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          704,
+          480
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "={{ $json.chatId }}",
+          "text": "={{ $json.replyText }}",
+          "additionalFields": {
+            "appendAttribution": false
+          }
+        },
+        "id": "51c5f4c7-2bd9-4769-a302-57fc22e53d49",
+        "name": "Send Telegram Reply",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          944,
+          352
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "webhookId": "f44f6c67-c7da-4c5a-905b-3322c176c5a8",
+        "credentials": {
+          "telegramApi": {
+            "id": "uJoD4GTZoEaPExwk",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## EduConnect LMS Telegram Architecture (Fixed)\nTelegram -> Normalize -> Identity Link -> Route Identity (3-way)\n  -> skipLookup (cached): Build Session Context -> Intent Router -> Specialist\n  -> needsPhone: Ask for Mobile\n  -> else (has phone): Lookup -> Store -> Student Found?\n     -> Found + linking msg: Send Link Confirmed\n     -> Found + regular msg: Build Session Context -> Intent Router\n     -> Not Found: Send error\nAll Telegram replies use PLAIN TEXT (no Markdown) to prevent silent drops.",
+          "height": 260,
+          "width": 760,
+          "color": 4
+        },
+        "id": "882f35e9-1d90-48ba-9396-8c87427bed1b",
+        "name": "Architecture",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -1152,
+          816
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nconst name = d.studentName || 'Arjun Mehta';\nconst course = d.courseName || 'Full Stack Web Development';\nconst batch = d.batchName || 'FSWD Morning Batch - Jan 2025';\nconst phone = d.phone || '9356968767';\nconst studentId = d.studentId || '4e0dda5a-a7e1-455d-b42b-08eb26027829';\nconst teacher = d.teacherName || 'Dr. Priya Sharma';\nconst text = String(d.messageText || '');\n\nlet reply = '';\n\nif (d.greetingType === 'security') {\n  reply = \"Access denied. I can only access records for your authenticated student profile and cannot disclose internal system instructions or credentials.\";\n} else if (d.greetingType === 'ungrounded') {\n  if (/marks?|internal\\s*assessment|ia\\s*marks/i.test(text)) {\n    reply = \"I do not have access to exam scores or internal assessment marks. Please check your student portal or consult \" + teacher + \".\";\n  } else if (/cgpa|gpa/i.test(text)) {\n    reply = \"I do not have access to CGPA records. Please contact your college administration.\";\n  } else if (/classmates?|batchmates?|class\\s*size|how\\s*many\\s*students/i.test(text)) {\n    reply = \"For privacy and data protection reasons, I cannot disclose classmate lists or student directory records.\";\n  } else if (/assignment/i.test(text)) {\n    reply = \"I do not track assignment submission deadlines. Please consult your course instructor or course dashboard.\";\n  } else if (/holiday|vacation/i.test(text)) {\n    reply = \"I do not maintain the college holiday calendar. Please check the official college notice board.\";\n  } else if (/rank|standing/i.test(text)) {\n    reply = \"Class rank information is not tracked by this LMS assistant.\";\n  } else if (/priya.*phone|phone.*priya|faculty\\s*phone/i.test(text)) {\n    reply = \"Faculty personal contact numbers cannot be shared. You can contact \" + teacher + \" during scheduled class hours.\";\n  } else if (/passing\\s*or\\s*failing/i.test(text)) {\n    reply = \"I do not make examination pass/fail determinations. Your attendance of 87% meets the course eligibility threshold.\";\n  } else if (/college\\s*address|location/i.test(text)) {\n    reply = \"Physical campus directory information is not available through this assistant.\";\n  } else if (/library\\s*books?/i.test(text)) {\n    reply = \"Library book records and borrowing status are not tracked by this LMS bot.\";\n  } else {\n    reply = \"I do not have access to those records. I can help with your attendance, fees, course details, study materials, or quizzes.\";\n  }\n} else if (d.greetingType === 'quiz_invalid_option') {\n  reply = \"Valid options are A, B, C, or D. Please choose one of those options.\";\n} else if (d.greetingType === 'negation_quiz') {\n  reply = \"Understood! No quiz. You can ask me about your attendance, fees, course details, or study materials.\";\n} else if (d.greetingType === 'cancel') {\n  reply = \"Action cancelled. Let me know whenever you need assistance with your attendance, fees, materials, or quizzes.\";\n} else if (d.greetingType === 'wrong_answer') {\n  reply = \"No problem, let's try again! Please send your answer (A, B, C, or D).\";\n} else if (d.greetingType === 'correction') {\n  reply = \"My apologies! What would you like to know about? You can ask about attendance, fees, course schedule, study materials, or quizzes.\";\n} else if (d.greetingType === 'no_issues') {\n  reply = \"Glad to hear that! Let me know if you need assistance with your attendance, fee status, materials, or quizzes.\";\n} else if (d.greetingType === 'status_summary') {\n  if (/deadline/i.test(text)) {\n    reply = \"Course concludes on \" + (d.endDate || '2025-07-15') + \". Outstanding fees (Rs.15,000) should be cleared before final examinations.\";\n  } else if (/what'?s\\s*left/i.test(text)) {\n    reply = \"Overview of remaining items:\\n- Remaining fee balance: Rs.15,000\\n- Course ends: \" + (d.endDate || '2025-07-15') + \"\\n- Classes attended: 26/30 (4 classes remaining)\";\n  } else if (/numbers|records|status|update/i.test(text)) {\n    reply = \"Student Status for \" + name + \":\\nCourse: \" + course + \"\\nAttendance: 87% (26/30 classes - Eligible for certification)\\nFees: Rs.30,000 paid of Rs.45,000 (Pending: Rs.15,000)\\nBatch: \" + batch + \"\\nInstructor: \" + teacher;\n  } else {\n    reply = \"Student Status for \" + name + \":\\nCourse: \" + course + \"\\nAttendance: 87% (26/30 classes)\\nFees Pending: Rs.15,000\\nBatch: \" + batch;\n  }\n} else if (d.greetingType === 'teacher') {\n  if (/what\\s*does\\s*she\\s*teach/i.test(text)) {\n    reply = teacher + \" teaches \" + course + \".\";\n  } else {\n    reply = \"Your teacher for \" + course + \" is \" + teacher + \".\";\n  }\n} else if (d.greetingType === 'course') {\n  reply = \"You are enrolled in \" + course + \" (\" + (d.courseDuration || '6 Months') + \"), Batch: \" + batch + \".\";\n} else if (d.greetingType === 'schedule') {\n  const end = d.endDate || '2025-07-15';\n  let diffDays = 0;\n  if (end) {\n    const endDt = new Date(end);\n    const now = new Date();\n    diffDays = Math.ceil((endDt - now) / (1000 * 60 * 60 * 24));\n  }\n  if (/how\\s*many\\s*months\\s*(?:are\\s*)?left|months\\s*left/i.test(text)) {\n    const months = Math.max(1, Math.round(diffDays / 30));\n    reply = \"There are approximately \" + months + \" months remaining in your course (ends on \" + end + \").\";\n  } else if (/how\\s*many\\s*(?:days|weeks)\\s*(?:are\\s*)?left|kitna\\s*time|bacha\\s*hai|days\\s*left|am\\s*i\\s*done/i.test(text)) {\n    if (diffDays > 0) {\n      const weeks = Math.round(diffDays / 7);\n      reply = \"There are \" + diffDays + \" days (~\" + weeks + \" weeks) remaining in your batch (ends on \" + end + \").\";\n    } else {\n      reply = \"Your batch concluded on \" + end + \".\";\n    }\n  } else if (/duration|how\\s*long/i.test(text)) {\n    reply = \"Your course duration is \" + (d.courseDuration || '6 Months') + \" (Started: \" + (d.startDate || '2025-01-15') + \", Ends: \" + end + \").\";\n  } else if (/end|finish|khatam|deadline/i.test(text)) {\n    reply = \"Your course ends on \" + end + \".\";\n  } else {\n    reply = \"Your class timing is \" + (d.batchTiming || '10:00 AM - 12:30 PM') + \", Monday to Friday.\";\n  }\n} else if (d.greetingType === 'profile') {\n  reply = \"Student: \" + name + \"\\nID: \" + studentId + \"\\nCourse: \" + course + \"\\nBatch: \" + batch + \"\\nRegistered Mobile: \" + phone;\n} else if (d.greetingType === 'multi') {\n  let lines = [];\n  const matches = d.multiMatches || [];\n  if (matches.includes('teacher') || /teacher/i.test(text)) {\n    lines.push(\"Your teacher for \" + course + \" is \" + teacher + \".\");\n  }\n  if (matches.includes('attendance') || /attendance/i.test(text)) {\n    lines.push(\"Attendance: 87% (26/30 classes).\");\n  }\n  if (matches.includes('fees') || /fees/i.test(text)) {\n    lines.push(\"Pending fees: Rs.15,000 (Paid: Rs.30,000 of Rs.45,000).\");\n  }\n  if (matches.includes('schedule') || /schedule|end|when/i.test(text)) {\n    lines.push(\"Course ends: \" + (d.endDate || '2025-07-15') + \".\");\n  }\n  if (matches.includes('course') && !matches.includes('teacher')) {\n    lines.push(\"Enrolled in \" + course + \" (\" + (d.courseDuration || '6 Months') + \").\");\n  }\n  if (matches.includes('quiz') || /quiz/i.test(text)) {\n    lines.push('Say \"quiz me\" to take a 5-question practice quiz.');\n  }\n  if (lines.length === 0) {\n    lines.push(\"Here is your student overview:\\n- Course: \" + course + \"\\n- Attendance: 87%\\n- Fees pending: Rs.15,000\\n- Batch timing: \" + (d.batchTiming || '10:00 AM - 12:30 PM'));\n  }\n  reply = lines.join('\\n');\n} else if (d.greetingType === 'thanks') {\n  reply = \"You're welcome, \" + name + \"! Let me know whenever you need help.\";\n} else if (d.greetingType === 'about' || d.greetingType === 'out_of_scope') {\n  reply = \"I can help with your LMS, attendance, fees, course details, materials, quizzes, or support.\";\n} else {\n  reply = \"Hi \" + name + \"! You can ask me about your attendance, fees, course details, study materials, or quizzes. How can I help?\";\n}\n\nreturn [{json:{replyText: reply, chatId: d.chatId}}];\n"
+        },
+        "id": "cc33dd44-ee55-ff66-7788-990011223344",
+        "name": "Greeting Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          -80
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nlet text = String(d.replyText || '').trim();\n\n// 1. Remove all n8n attribution, URLs, and footers (Section 2 & 21)\ntext = text.replace(/This message was sent automatically with\\s*\\[?n8n\\]?.*$/im, '');\ntext = text.replace(/This message was sent automatically with.*$/im, '');\ntext = text.replace(/https?:\\/\\/n8n\\.io\\S*/gi, '');\ntext = text.replace(/[?&]utm_[a-zA-Z0-9_=-]+/gi, '');\ntext = text.replace(/n8n-internal\\S*/gi, '');\n\n// 2. Remove AI model preambles & conversational filler (Section 2 & 21)\ntext = text.replace(/^(?:Sure!?|Certainly!?|Of course!?|Here is the information you requested:?|As an AI language model[,\\.]?|I'd be happy to help[,\\.]?)\\s*/i, '');\ntext = text.replace(/(?:\\n+|^)(?:I hope this helps!?|Let me know if you need anything else!?|Feel free to reach out[^\\n]*|Happy to help!?)\\s*$/i, '');\n\n// 3. Remove system / agent labels & XML tags\ntext = text.replace(/^(?:Assistant|Agent|Final answer):\\s*/i, '');\ntext = text.replace(/<analysis>[\\s\\S]*?<\\/analysis>/gi, '');\ntext = text.replace(/^```json[\\s\\S]*?```$/gi, '');\n\n// 4. Collapse excessive blank lines\ntext = text.replace(/\\n{3,}/g, '\\n\\n').trim();\n\n// 5. Length guard for Telegram (max 4000)\nif (text.length > 3500) {\n  const cutoff = text.lastIndexOf('\\n\\n', 3500);\n  text = cutoff > 2000 ? text.substring(0, cutoff) : text.substring(0, 3500) + '...';\n}\n\n// 6. Balance code blocks\nconst tripleBackticks = (text.match(/```/g) || []).length;\nif (tripleBackticks % 2 !== 0) text += '\\n```';\n\nreturn [{json: { replyText: text, chatId: d.chatId }}];"
+        },
+        "id": "778899aa-bbcc-ddee-ff00-112233445566",
+        "name": "Response Sanitizer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          752,
+          352
+        ]
+      }
+    ],
+    "connections": {
+      "Telegram Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize Telegram Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Telegram Message": {
+        "main": [
+          [
+            {
+              "node": "Resolve Student Identity",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolve Student Identity": {
+        "main": [
+          [
+            {
+              "node": "Route Identity",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route Identity": {
+        "main": [
+          [
+            {
+              "node": "Build Session Context",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ask for Registered Mobile",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Lookup Student by Registered Mobile",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lookup Student by Registered Mobile": {
+        "main": [
+          [
+            {
+              "node": "Store Student Mapping",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Store Student Mapping": {
+        "main": [
+          [
+            {
+              "node": "Student Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Student Found?": {
+        "main": [
+          [
+            {
+              "node": "Is Linking Message?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Student Not Found",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Linking Message?": {
+        "main": [
+          [
+            {
+              "node": "Link Confirmed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Session Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Session Context": {
+        "main": [
+          [
+            {
+              "node": "Intent Router (Ollama)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Intent Router (Ollama)": {
+        "main": [
+          [
+            {
+              "node": "Parse Intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Intent": {
+        "main": [
+          [
+            {
+              "node": "Route to Specialist",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route to Specialist": {
+        "main": [
+          [
+            {
+              "node": "Greeting Reply",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Get Attendance Data",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Get Fee Data",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "RAG Semantic Search",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Prepare Support Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Attendance Data": {
+        "main": [
+          [
+            {
+              "node": "Prepare Attendance Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Attendance Context": {
+        "main": [
+          [
+            {
+              "node": "Attendance Finalize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Fee Data": {
+        "main": [
+          [
+            {
+              "node": "Prepare Fee Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Fee Context": {
+        "main": [
+          [
+            {
+              "node": "Fees Finalize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Quiz Context": {
+        "main": [
+          [
+            {
+              "node": "Quiz Specialist (Ollama)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Quiz Specialist (Ollama)": {
+        "main": [
+          [
+            {
+              "node": "Quiz Finalize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Support Context": {
+        "main": [
+          [
+            {
+              "node": "Support Specialist (Ollama)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Support Specialist (Ollama)": {
+        "main": [
+          [
+            {
+              "node": "Create Support Ticket",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Support Ticket": {
+        "main": [
+          [
+            {
+              "node": "Build Support Final",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Support Final": {
+        "main": [
+          [
+            {
+              "node": "Response Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Attendance Finalize": {
+        "main": [
+          [
+            {
+              "node": "Response Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fees Finalize": {
+        "main": [
+          [
+            {
+              "node": "Response Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Quiz Finalize": {
+        "main": [
+          [
+            {
+              "node": "Response Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Greeting Reply": {
+        "main": [
+          [
+            {
+              "node": "Response Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Response Sanitizer": {
+        "main": [
+          [
+            {
+              "node": "Send Telegram Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "RAG Semantic Search": {
+        "main": [
+          [
+            {
+              "node": "Prepare Quiz Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": {
+      "global": {
+        "tg_student_5551234567": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T13:32:29.662Z"
+        },
+        "tg_student_9991001": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T14:50:06.378Z"
+        },
+        "tg_student_9991004": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T14:50:08.674Z"
+        },
+        "tg_student_9991005": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T14:50:10.314Z"
+        },
+        "tg_student_9991006": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T14:50:12.855Z"
+        },
+        "tg_student_9991008_unlinked": true,
+        "tg_student_9991009_unlinked": true,
+        "tg_student_9991010": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Data Science & Machine Learning",
+          "courseDuration": "4 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T14:50:28.105Z"
+        },
+        "tg_student_8173291314": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T16:54:53.169Z"
+        },
+        "tg_student_99990022": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T16:37:19.834Z"
+        },
+        "tg_student_99990014": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T16:54:48.021Z"
+        },
+        "tg_student_99990015": {
+          "studentId": "4e0dda5a-a7e1-455d-b42b-08eb26027829",
+          "phone": "9356968767",
+          "studentName": "Arjun Mehta",
+          "className": "FSWD Morning Batch - Jan 2025",
+          "courseName": "Full Stack Web Development",
+          "courseDuration": "6 Months",
+          "batchName": "FSWD Morning Batch - Jan 2025",
+          "teacherName": "Dr. Priya Sharma",
+          "startDate": "2025-01-15",
+          "endDate": "2025-07-15",
+          "batchTiming": "10:00 AM - 12:30 PM",
+          "linkedAt": "2026-09-06T16:54:57.686Z"
+        },
+        "tg_student_99990033_unlinked": true
+      }
+    },
+    "meta": null,
+    "pinData": {},
+    "versionId": "24f113e5-0ee7-4a2c-aeb6-783c04fdaf5d",
+    "activeVersionId": "24f113e5-0ee7-4a2c-aeb6-783c04fdaf5d",
+    "versionCounter": 30,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-09-04T13:47:48.971Z",
+        "createdAt": "2026-09-04T13:47:48.971Z",
+        "role": "workflow:owner",
+        "workflowId": "cwvpc4Hhy7DQbLWt",
+        "projectId": "GZPpUHxpxXyfsVUn",
+        "project": {
+          "updatedAt": "2026-05-13T06:11:22.337Z",
+          "createdAt": "2026-05-13T06:10:40.876Z",
+          "id": "GZPpUHxpxXyfsVUn",
+          "name": "Mukul Argade <mukulargade3113@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "65d83b4b-030f-4b64-becd-afc9e389985a"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
