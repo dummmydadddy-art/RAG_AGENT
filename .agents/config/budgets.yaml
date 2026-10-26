@@ -1,0 +1,22 @@
+# Operational Budgets and Ceilings
+# Enforced by the Lead Orchestrator
+
+task_execution:
+  max_iterations_per_task: 4
+  max_retries_on_failure: 2
+  timeout_seconds_per_task: 300
+
+team_debate:
+  max_debate_rounds: 2
+  max_parallel_implementers: 3
+  timeout_seconds_per_round: 180
+
+resource_limits:
+  max_prompt_tokens: 32000
+  max_lessons_injected: 5
+  max_lesson_tokens: 1500
+
+physmath_sandbox:
+  timeout_seconds: 5.0
+  max_memory_mb: 512
+  allow_network: false

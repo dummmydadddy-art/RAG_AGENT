@@ -25,4 +25,7 @@ team/
 # Logs & temporary files
 *.log
 backend/api_debug.log
+backend/storage/*.sqlite
 backend/storage/*.sqlite-journal
+*.sqlite
+*.db
