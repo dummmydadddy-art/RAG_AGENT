@@ -245,13 +245,13 @@ Results are structured (pass or fail, numbers, tolerance used) so the verifier c
 
 ## 8. Roadmap
 
-| Phase | Build | Accepted when |
-| --- | --- | --- |
-| 0 Foundations | Verify platform paths and write PLATFORM\_NOTES; repo skeleton; GEMINI.md and rules; adapter with stub and real backend; `rag-mcp`; `physmath-mcp` with units\_check, sym\_equiv, numeric\_compare; setup and doctor scripts | Adapter round trip passes against the real engine; both MCP servers appear as tools in Antigravity; unit and contract tests green; `doctor.ps1` all green |
-| 1 Single agent | Skills; roles orchestrator, implementer, reviewer, physmath-verifier; `/gsd`; eval harness with 8 tasks | At least 6 of 8 tasks completed without human input; each run leaves a plan, a report and a trace |
-| 2 Learning loop | Librarian; lesson lifecycle; promotion and rollback; remaining physmath tools | Lifecycle rules covered by tests; an injected bad lesson is demoted by rollback; held-out pass rate does not drop |
-| 3 Team mode | Architect and adversarial-tester; `/team`; board and decision records; full 24-task suite | Team beats single mode on the hard subset at an acceptable cost, or the report says it does not |
-| 4 Hardening | Hooks, budget enforcement, scheduled eval, retrieval tracing report, documentation pass | A budget breach stops a run; the weekly report is generated unattended |
+| Phase | Build | Accepted when | Status |
+| --- | --- | --- | --- |
+| 0 Foundations | Verify platform paths and write PLATFORM\_NOTES; repo skeleton; GEMINI.md and rules; adapter with stub and real backend; `rag-mcp`; `physmath-mcp` with units\_check, sym\_equiv, numeric\_compare; setup and doctor scripts | Adapter round trip passes against the real engine; both MCP servers appear as tools in Antigravity; unit and contract tests green; `doctor.ps1` all green | **Accepted** |
+| 1 Single agent | Skills; roles orchestrator, implementer, reviewer, physmath-verifier; `/gsd`; eval harness with 8 tasks | At least 6 of 8 tasks completed without human input; each run leaves a plan, a report and a trace | **Accepted** (8/8 passed) |
+| 2 Learning loop | Librarian; lesson lifecycle; promotion and rollback; remaining physmath tools | Lifecycle rules covered by tests; an injected bad lesson is demoted by rollback; held-out pass rate does not drop | **Accepted** (100% held-out) |
+| 3 Team mode | Architect and adversarial-tester; `/team`; board and decision records; full 24-task suite | Team beats single mode on the hard subset at an acceptable cost, or the report says it does not | **Accepted** (24/24 suite, 7/7 hard subset) |
+| 4 Hardening | Hooks, budget enforcement, scheduled eval, retrieval tracing report, documentation pass | A budget breach stops a run; the weekly report is generated unattended | **Accepted** (8/8 budget tests, unattended weekly report) |
 
 Each phase ends with a written report, and the next phase starts only after approval.
 

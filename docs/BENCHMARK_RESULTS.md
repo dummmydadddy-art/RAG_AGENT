@@ -16,7 +16,7 @@
   - **Backend Identity**: `SqliteVectorBackend(backend/storage/vectors.sqlite)`
   - **Store Baseline SHA-256**: `302cc165dd011d4850f95cabc33f75d8cb028d1c7b3df6fb6c2bfd4d8f57825e`
   - **Hidden Checks**: Encrypted in `evals/hidden_evals.enc` (AES Fernet + PBKDF2-HMAC-SHA256)
-  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456` (0 leaks detected)
+  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-[MASKED]` (0 leaks detected)
 
 ### Summary Metrics
 
@@ -89,7 +89,7 @@ Per `docs/ARCHITECTURE.md` Section 8:
   - **Backend Identity**: `SqliteVectorBackend(backend/storage/vectors.sqlite)`
   - **Store Baseline SHA-256**: `3044377b12728cb04a5b69a48257dfb622d58f81e6d764bdd0f9fed6fd7759fc`
   - **Hidden Checks**: Encrypted in `evals/hidden_evals.enc` (AES Fernet + PBKDF2-HMAC-SHA256)
-  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456` (0 leaks detected)
+  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-[MASKED]` (0 leaks detected)
   - **Benchmark Report**: `evals/reports/benchmark_report_20261026_143206.md`
 
 ### Summary Metrics
@@ -143,7 +143,7 @@ Per `docs/ARCHITECTURE.md` Section 8:
   - **Retrieval Mode (Pinned)**: `hybrid_rrf_pinned`
   - **Backend Identity**: `SqliteVectorBackend(backend/storage/vectors.sqlite)`
   - **Hidden Checks**: Encrypted in `evals/hidden_evals.enc` (AES Fernet + PBKDF2-HMAC-SHA256, 43,612 bytes)
-  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456` (0 leaks detected)
+  - **Canary Protection**: `CANARY-RAG-AGENT-CHECK-V2-[MASKED]` (0 leaks detected)
 
 ### Comparative Metrics: Single Mode vs. Team Mode
 
@@ -237,5 +237,45 @@ Per `docs/ARCHITECTURE.md` Section 8:
 - [x] **Full 24-task benchmark executed**: 24/24 passed (100.0%) in Single Mode; 4/4 held-out passed (100.0%).
 - [x] **Hard subset evaluated in Team Mode**: 7/7 passed (100.0%) across all 3 repeats (21/21 runs passed); 21 ADRs and coordination boards generated.
 - [x] **Comparative analysis recorded**: Comprehensive tradeoff and cost-benefit report documented above.
+
+---
+
+## Phase 4: Hardening, Operational Budgets & Unattended Scheduled Evaluation
+
+- **Execution Date**: 26 October 2026
+- **Surface & Platform**: Google Antigravity Desktop App v44.4.3 / CLI `agy` v1.4.7 on Windows 11
+- **Evaluation Configuration**:
+  - **Git Guard Hooks**: `pre-push` and `pre-commit` active via `scripts/install-hooks.ps1`
+  - **Budget Guard**: `.agents/config/budgets.yaml` enforced via `scripts/budget_guard.py`
+  - **Scheduled Unattended Eval**: `evals/scheduled_eval.py` (`evals/reports/weekly_report_20261026_155640.md`)
+  - **Retrieval Tracing Report**: `scripts/retrieval_tracer.py` (`evals/reports/retrieval_tracing_report_20261026_155334.md`)
+
+### Summary Metrics: Phase 4 Hardening
+
+| Verification Category | Target Invariant | Result | Status |
+|---|---|---|---|
+| **Git Push Guard (`pre-push`)** | Block push to `main` and legacy LMS repos | Blocked with exit code 1 | **PASS** |
+| **Git Commit Guard (`pre-commit`)** | Block canary leaks and unauthorized protected paths | Blocked with exit code 1 | **PASS** |
+| **Operational Budget Enforcement** | Halt execution upon ceiling breach | 8/8 unit tests passing; halt on breach verified | **PASS** |
+| **Retired Lesson Exclusion Invariant** | 0 retired lessons retrieved across all queries | 0 leaks detected in audit | **PASS** |
+| **Unattended Scheduled Evaluation** | Generate weekly report unattended; check regression gates | Report generated unattended; held-out gate 100% | **PASS** |
+| **Automated Rollback Trigger** | Rollback triggered when regression gate fails | Tested & verified in `test_scheduled_eval.py` | **PASS** |
+| **Overall Pytest Suite** | 100% tests green without network access | **70 / 70 passed (100.0%)** in 19.05s | **PASS** |
+| **Doctor Diagnostics (`doctor.ps1`)** | All diagnostic checks green | **ALL GREEN (PHASES 0-4)** | **PASS** |
+
+---
+
+### Phase 4 Exit Criteria Assessment
+
+Per `docs/ARCHITECTURE.md` Section 8:
+- [x] **Hooks implemented and installed**: `scripts/hooks/pre_push.py`, `scripts/hooks/pre_commit.py`, and `scripts/install-hooks.ps1`.
+- [x] **Budget enforcement active**: `scripts/budget_guard.py` reading `.agents/config/budgets.yaml`; unit tests confirm a ceiling breach halts execution.
+- [x] **Scheduled eval runner implemented**: `evals/scheduled_eval.py` runs unattended, checks regression gates, and triggers rollback upon regression.
+- [x] **Retrieval tracing report generated**: `scripts/retrieval_tracer.py` emitted `evals/reports/retrieval_tracing_report_20261026_155334.md`.
+- [x] **Documentation pass complete**: `docs/ARCHITECTURE.md`, `docs/PLATFORM_NOTES.md`, and `docs/BENCHMARK_RESULTS.md` updated.
+- [x] **Acceptance Gates Verified**:
+  - *Gate 1*: A budget breach stops a run (Verified).
+  - *Gate 2*: The weekly report is generated unattended (Verified).
+
 
 

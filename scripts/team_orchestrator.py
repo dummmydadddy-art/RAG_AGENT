@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from scripts.budget_guard import BudgetGuard
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,6 +28,9 @@ def run_phase_a_debate(
     1. Parallel proposals from architect, physmath-verifier, adversarial-tester.
     2. Critique round (capped at 2 rounds maximum per budgets.yaml).
     """
+    guard = BudgetGuard()
+    guard.check_debate_rounds(run_id, 1)
+
     proposals_dir = output_dir / "proposals"
     critiques_dir = output_dir / "critiques"
     proposals_dir.mkdir(parents=True, exist_ok=True)
@@ -218,6 +223,9 @@ def create_team_board(
     """
     Create team/<run-id>/board.md tracking task slices, assignees, file scopes, and status.
     """
+    guard = BudgetGuard()
+    guard.check_parallel_implementers(run_id, len(slices))
+
     board_path = output_dir / "board.md"
 
     lines = [

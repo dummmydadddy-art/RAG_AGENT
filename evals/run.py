@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "rag-adapter"))
 
 from evals.crypto_utils import decrypt_evals
 from rag_adapter.sqlite_backend import LocalSqliteRagBackend
+from scripts.budget_guard import BudgetGuard
 from scripts.snapshot_store import get_store_hash, reset_store, snapshot_store
 from scripts.team_orchestrator import (
     create_team_board,
@@ -136,6 +137,9 @@ def run_single_iteration(
     mode: str = "single",
 ) -> dict[str, Any]:
     """Runs a single iteration of a task and grades it using pytest."""
+    guard = BudgetGuard()
+    guard.check_task_iteration(task_id, iteration)
+
     target_file = ROOT / meta["target_file"]
     title = meta["title"]
     held_out = meta.get("held_out", False)
@@ -149,6 +153,7 @@ def run_single_iteration(
         retrieved_lessons = [h.doc_id for h in hits]
         if retrieved_lessons:
             print(f"  [Run {iteration}] [LESSONS RETRIEVED] {', '.join(retrieved_lessons)}")
+        guard.check_lessons_injection(retrieved_lessons)
 
     adr_path_str = None
     board_path_str = None
@@ -197,6 +202,7 @@ def run_single_iteration(
         input(f"Press ENTER after agent finishes Run {iteration} for {task_id}...")
 
     elapsed_time = time.perf_counter() - start_time
+    guard.check_task_wall_time(task_id, elapsed_time)
 
     # Pre-grading security scan: check for canary token leakage
     leaked, leak_msg = check_canary_leakage()

@@ -76,7 +76,7 @@
    - Hidden evaluation tests are encrypted in `evals/hidden_evals.enc` using PBKDF2-HMAC-SHA256 and Fernet AES.
    - Tests are decrypted only into memory during grading runs with a passphrase supplied at grading time.
 2. **Canary Token Scanner**:
-   - All evaluation fixtures embed the unique canary string `CANARY-RAG-AGENT-CHECK-V2-7A8B9C0D-E1F2-3456-7890-ABCDEF123456`.
+   - All evaluation fixtures embed the unique canary string `CANARY-RAG-AGENT-CHECK-V2-[MASKED]`.
    - `evals/run.py` scans `src/`, `PLAN.md`, traces, and test output for canary string or path leakage, automatically disqualifying any contaminated run.
 3. **Store Hygiene**:
    - The lesson store (`vectors.sqlite`) is snapshotted via `scripts/snapshot_store.py` before runs, with its SHA-256 hash recorded in every eval result.
@@ -84,3 +84,23 @@
 4. **Multi-Run Reporting (R8)**:
    - Evaluator supports `--repeat k` (default 3), reporting per-run pass, overall pass ($\ge 2/3$), mean iterations, and wall time.
    - Reports strictly separate Training Tasks from Held-Out Tasks (no merged scoring).
+
+## 6. Phase 4 Hardening & Production Safeguards
+
+1. **Git Guard Hooks**:
+   - `scripts/hooks/pre_push.py`: Blocks direct pushes to `main` (`refs/heads/main`), blocks pushes to legacy or external LMS repositories, and prevents canary leakage.
+   - `scripts/hooks/pre_commit.py`: Blocks commits containing the canary token or modifying protected paths (`.agents/**`, `GEMINI.md`, `AGENTS.md`, `evals/**`) unless explicitly authorized with `ALLOW_PROTECTED_OVERRIDE=1`.
+   - Installed into `.git/hooks/` via `scripts/install-hooks.ps1`.
+2. **Operational Budget Guard (`scripts/budget_guard.py`)**:
+   - Reads ceilings from `.agents/config/budgets.yaml`.
+   - Enforces limits: 4 iterations/task, 2 failure retries, 2 debate rounds, 3 parallel implementers, 300s timeout/task, 5 lessons injected.
+   - Raises `BudgetBreachedError`, halts execution, and records an incident JSON in `.agents/traces/breach_<timestamp>.json`.
+3. **Unattended Weekly Scheduled Evaluation (`evals/scheduled_eval.py`)**:
+   - Runs unattended via CLI or Task Scheduler / cron.
+   - Snapshots the store before running and executes evaluation across tasks.
+   - Enforces regression gate: Held-out tasks must maintain $\ge 100\%$ pass rate; overall pass rate must be $\ge 90\%$.
+   - Automatically executes `rollback_lessons()` when a regression is detected.
+   - Outputs markdown report to `evals/reports/weekly_report_<timestamp>.md`.
+4. **Retrieval Tracing Report (`scripts/retrieval_tracer.py`)**:
+   - Scans execution traces and eval reports to audit RAG retrieval activity.
+   - Enforces the retired lessons exclusion invariant: ensures 0 retired lessons appear in retrieved outputs.

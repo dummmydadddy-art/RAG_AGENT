@@ -72,9 +72,23 @@ if (Test-Path $mcpConfigPath) {
 }
 Check-Result "Antigravity MCP Server Registration" $mcpOk "$mcpDetails"
 
+# 7. Phase 4 Hardening: Git Guard Hooks
+$prePushHook = Join-Path $root ".git\hooks\pre-push"
+$preCommitHook = Join-Path $root ".git\hooks\pre-commit"
+$hooksInstalled = (Test-Path $prePushHook) -and (Test-Path $preCommitHook)
+Check-Result "Phase 4 Git Guard Hooks" $hooksInstalled "pre-push: $(Test-Path $prePushHook) | pre-commit: $(Test-Path $preCommitHook)"
+
+# 8. Phase 4 Hardening: Operational Budget Guard & Scheduled Eval
+$budgetConfig = Join-Path $root ".agents\config\budgets.yaml"
+$budgetModule = Join-Path $root "scripts\budget_guard.py"
+$schedEval = Join-Path $root "evals\scheduled_eval.py"
+$tracerModule = Join-Path $root "scripts\retrieval_tracer.py"
+$hardeningOk = (Test-Path $budgetConfig) -and (Test-Path $budgetModule) -and (Test-Path $schedEval) -and (Test-Path $tracerModule)
+Check-Result "Phase 4 Hardening Infrastructure" $hardeningOk "budgets.yaml: $(Test-Path $budgetConfig) | scheduled_eval.py: $(Test-Path $schedEval)"
+
 Write-Host "================================================" -ForegroundColor Cyan
 if ($allPassed) {
-    Write-Host " ALL PHASE 0 CHECKS GREEN!" -ForegroundColor Green
+    Write-Host " ALL SYSTEM DIAGNOSTICS GREEN (PHASES 0-4)!" -ForegroundColor Green
     exit 0
 } else {
     Write-Host " SOME CHECKS FAILED. Review diagnostics above." -ForegroundColor Yellow
