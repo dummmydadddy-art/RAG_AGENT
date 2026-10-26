@@ -39,18 +39,22 @@ def snapshot_store(label: str = "eval", db_path: Path = DEFAULT_DB_PATH) -> tupl
     return snapshot_path, current_hash
 
 
-def reset_store(db_path: Path = DEFAULT_DB_PATH) -> str:
+def reset_store(db_path: Path = DEFAULT_DB_PATH, purge_lessons: bool = True) -> str:
     """
-    Resets the lessons store to a pristine, clean state before benchmark runs.
-    Keeps any verified knowledge entries but purges candidate or transient lessons.
+    Resets the store between benchmark runs.
+    When purge_lessons is True, purges lessons and traces.
+    When purge_lessons is False (lessons-on mode), retains verified lessons and purges only traces.
     """
     if db_path.exists():
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
-            # Check if rag_documents exists
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rag_documents';")
             if cursor.fetchone():
-                cursor.execute("DELETE FROM rag_documents WHERE collection = 'lessons';")
+                if purge_lessons:
+                    cursor.execute("DELETE FROM rag_documents WHERE collection = 'lessons';")
+                else:
+                    # Retain verified lessons; clean up transient traces and unverified candidates
+                    cursor.execute("DELETE FROM rag_documents WHERE collection = 'lessons' AND json_extract(metadata, '$.status') != 'verified';")
                 cursor.execute("DELETE FROM rag_documents WHERE collection = 'traces';")
                 conn.commit()
             cursor.execute("VACUUM;")

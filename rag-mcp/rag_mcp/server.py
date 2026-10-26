@@ -14,6 +14,12 @@ except ImportError:
 
 from rag_adapter.models import LessonStatus
 from rag_adapter.sqlite_backend import LocalSqliteRagBackend
+from rag_adapter.lifecycle import (
+    validate_lesson_format,
+    check_duplicate_lesson,
+    check_contradiction,
+    can_promote_lesson,
+)
 
 # Initialize FastMCP application
 mcp = FastMCP("rag-mcp")
@@ -53,24 +59,54 @@ def rag_search(
 ) -> Dict[str, Any]:
     """
     Search across knowledge and lessons collections.
-    Returns ranked hits matching the query. Excludes retired lessons by default.
+    Returns ranked hits matching the query. Excludes retired lessons and prioritizes verified lessons.
     """
     if collections is None:
         collections = ["knowledge", "lessons"]
 
-    hits = _backend.search(query=query, collections=collections, filters=filters, k=k)
+    hits = _backend.search(query=query, collections=collections, filters=filters, k=k * 2)
+
+    # Sort lessons: verified first, candidate second; exclude retired
+    def _sort_key(hit):
+        meta = hit.metadata or {}
+        if hit.collection == "lessons":
+            st = meta.get("status")
+            if st == LessonStatus.VERIFIED:
+                return (2, hit.score)
+            elif st == LessonStatus.CANDIDATE:
+                return (1, hit.score)
+            else:
+                return (-1, hit.score)
+        return (1, hit.score)
+
+    valid_hits = [
+        h for h in hits
+        if not (h.collection == "lessons" and (h.metadata or {}).get("status") == LessonStatus.RETIRED)
+    ]
+    valid_hits.sort(key=_sort_key, reverse=True)
+    selected_hits = valid_hits[:k]
+
+    results = []
+    for h in selected_hits:
+        meta = dict(h.metadata or {})
+        text = h.text
+        if h.collection == "lessons":
+            status = meta.get("status", LessonStatus.CANDIDATE)
+            if status == LessonStatus.CANDIDATE:
+                meta["tag"] = "[UNVERIFIED]"
+            elif status == LessonStatus.VERIFIED:
+                meta["tag"] = "[VERIFIED]"
+        results.append({
+            "doc_id": h.doc_id,
+            "collection": h.collection,
+            "text": text,
+            "metadata": meta,
+            "score": round(h.score, 4),
+        })
+
     return {
-        "count": len(hits),
-        "results": [
-            {
-                "doc_id": h.doc_id,
-                "collection": h.collection,
-                "text": h.text,
-                "metadata": h.metadata,
-                "score": round(h.score, 4),
-            }
-            for h in hits
-        ],
+        "count": len(results),
+        "results": results,
     }
 
 
@@ -79,10 +115,13 @@ def rag_upsert_lesson(
     lesson: Dict[str, Any],
     caller_role: str = "",
     auth_token: str = "",
+    allow_override: bool = False,
 ) -> Dict[str, Any]:
     """
     Upsert a distilled lesson. Restricted to librarian and rollback roles.
     Input lesson must contain: id, title, rule.
+    Validates canonical rule format, checks for duplicates and contradictions.
+    Lessons initially start in 'candidate' status unless override specified by rollback.
     """
     _verify_write_permission(auth_token=auth_token, caller_role=caller_role)
 
@@ -93,7 +132,26 @@ def rag_upsert_lesson(
     if not lesson_id or not title or not rule:
         return {"success": False, "error": "Missing mandatory lesson fields: id, title, rule"}
 
-    status = lesson.get("status", LessonStatus.CANDIDATE)
+    # Canonical format check
+    is_valid, msg = validate_lesson_format(rule)
+    if not is_valid and not allow_override:
+        return {"success": False, "error": msg}
+
+    # Duplicate check
+    is_dup, dup_id = check_duplicate_lesson(_backend, rule)
+    if is_dup and dup_id != lesson_id and not allow_override:
+        return {"success": False, "error": f"Duplicate of existing lesson {dup_id}"}
+
+    # Contradiction check against verified lessons
+    is_contra, contra_id, contra_reason = check_contradiction(_backend, rule)
+    if is_contra and not allow_override:
+        return {"success": False, "error": f"Contradiction detected with verified lesson {contra_id}: {contra_reason}"}
+
+    # Enforce candidate status initially unless explicitly overridden by rollback
+    status = lesson.get("status")
+    if not allow_override or status not in (LessonStatus.CANDIDATE, LessonStatus.VERIFIED, LessonStatus.RETIRED):
+        status = LessonStatus.CANDIDATE
+
     metadata = {
         "title": title,
         "rule": rule,
@@ -163,13 +221,19 @@ def rag_record_use(lesson_id: str, success: bool, task_id: str = "") -> Dict[str
 def rag_promote(
     lesson_id: str,
     reason: str,
+    pr_merged: bool = True,
     caller_role: str = "",
     auth_token: str = "",
 ) -> Dict[str, Any]:
     """
     Promote a lesson to 'verified'. Restricted to librarian and rollback roles.
+    Enforces evidence checks: passing tests and PR merged or successful reuse.
     """
     _verify_write_permission(auth_token=auth_token, caller_role=caller_role)
+    ok, err_msg = can_promote_lesson(_backend, lesson_id, pr_merged=pr_merged)
+    if not ok:
+        return {"success": False, "error": err_msg}
+
     try:
         _backend.set_status("lessons", lesson_id, LessonStatus.VERIFIED, reason)
         return {"success": True, "lesson_id": lesson_id, "status": LessonStatus.VERIFIED}

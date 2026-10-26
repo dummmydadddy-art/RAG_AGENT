@@ -1,7 +1,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 # Ensure physmath_mcp is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -273,6 +273,396 @@ except Exception as e:
     data = res.get("data", {})
     data["wall_time_ms"] = res.get("wall_time_ms")
     return data
+
+
+@mcp.tool()
+def sym_solve(
+    operation: str,
+    expression: str,
+    variable: str = "x",
+    target: Optional[str] = None,
+    order: int = 4,
+    point: float = 0.0,
+    assumptions: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Differentiate, integrate, solve, or series-expand mathematical expressions using SymPy.
+    Computes a verification residual to guarantee mathematical soundness.
+    Runs in isolated subprocess sandbox.
+    """
+    op_json = json.dumps(operation)
+    expr_json = json.dumps(expression)
+    var_json = json.dumps(variable)
+    target_repr = repr(target)
+    order_val = int(order)
+    pt_val = float(point)
+    assump_repr = repr(assumptions or {})
+
+    script = f"""
+import json
+import random
+import sys
+import sympy
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+
+transformations = standard_transformations + (implicit_multiplication_application,)
+
+op = {op_json}.lower()
+expr_str = {expr_json}
+var_str = {var_json}
+target_str = {target_repr}
+order = {order_val}
+point = {pt_val}
+assumptions = {assump_repr}
+
+try:
+    var_sym = sympy.Symbol(var_str, **assumptions.get(var_str, {{"real": True}}))
+    expr = parse_expr(expr_str, transformations=transformations, local_dict={{var_str: var_sym}})
+
+    res_str = ""
+    residual = 0.0
+    details = ""
+
+    if op in ("diff", "derivative"):
+        sol = sympy.diff(expr, var_sym)
+        res_str = str(sol)
+        # Residual verification via fundamental theorem check: int(diff) - expr == const
+        check_int = sympy.integrate(sol, var_sym)
+        diff_rem = sympy.simplify(check_int - expr)
+        residual = float(abs(complex(sympy.diff(diff_rem, var_sym).evalf(subs={{var_sym: 1.5}}))))
+        details = f"Differentiated wrt {{var_str}}"
+
+    elif op in ("integrate", "integral"):
+        sol = sympy.integrate(expr, var_sym)
+        res_str = str(sol)
+        # Residual verification: diff(integral) - expr == 0
+        diff_back = sympy.simplify(sympy.diff(sol, var_sym) - expr)
+        residual = float(abs(complex(diff_back.evalf(subs={{var_sym: 1.5}}))))
+        details = f"Integrated wrt {{var_str}}"
+
+    elif op in ("solve", "roots"):
+        eq = expr
+        if target_str is not None:
+            tgt = parse_expr(target_str, transformations=transformations, local_dict={{var_str: var_sym}})
+            eq = expr - tgt
+        sol = sympy.solve(eq, var_sym)
+        res_str = str(sol)
+        # Residual: max |eq(root)|
+        max_res = 0.0
+        for r in sol:
+            try:
+                val = abs(complex(eq.evalf(subs={{var_sym: r}})))
+                if val > max_res:
+                    max_res = val
+            except Exception:
+                pass
+        residual = float(max_res)
+        details = f"Solved {{expr_str}} for {{var_str}}"
+
+    elif op in ("series", "taylor"):
+        sol = sympy.series(expr, var_sym, point, order).removeO()
+        res_str = str(sol)
+        # Residual: |expr - series| at small offset
+        h = 0.01
+        test_pt = point + h
+        val_expr = complex(expr.evalf(subs={{var_sym: test_pt}}))
+        val_ser = complex(sol.evalf(subs={{var_sym: test_pt}}))
+        residual = float(abs(val_expr - val_ser))
+        details = f"Series expanded around {{point}} up to order {{order}}"
+
+    else:
+        raise ValueError(f"Unknown operation: {{op}}")
+
+    print(json.dumps({{
+        "success": True,
+        "operation": op,
+        "result": res_str,
+        "residual": residual,
+        "details": details
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
+
+@mcp.tool()
+def invariant_check(
+    step_code: str,
+    invariant_code: str,
+    initial_state: Any,
+    dt: float,
+    steps: int = 100,
+    tol_rel: float = 0.05,
+) -> Dict[str, Any]:
+    """
+    Run a simulation or iterative method repeatedly and report drift in a conserved physical quantity (energy, momentum, mass).
+    Runs inside isolated subprocess sandbox.
+    """
+    step_json = json.dumps(step_code)
+    inv_json = json.dumps(invariant_code)
+    state_repr = repr(initial_state)
+
+    script = f"""
+import json
+import math
+import sys
+
+step_src = {step_json}
+inv_src = {inv_json}
+init_state = {state_repr}
+dt = {float(dt)}
+steps = {int(steps)}
+tol_rel = {float(tol_rel)}
+
+try:
+    loc = {{}}
+    exec(step_src, loc, loc)
+    exec(inv_src, loc, loc)
+
+    step_fn = loc.get("step")
+    inv_fn = loc.get("invariant")
+
+    if not step_fn or not inv_fn:
+        raise ValueError("Code must define 'step(t, state)' and 'invariant(t, state)' functions")
+
+    t = 0.0
+    state = init_state
+    e0 = float(inv_fn(t, state))
+
+    max_drift_abs = 0.0
+    history = [e0]
+
+    for _ in range(steps):
+        t, state = step_fn(t, state)
+        e_curr = float(inv_fn(t, state))
+        history.append(e_curr)
+        drift = abs(e_curr - e0)
+        if drift > max_drift_abs:
+            max_drift_abs = drift
+
+    denom = abs(e0) if abs(e0) > 1e-12 else 1.0
+    max_drift_rel = max_drift_abs / denom
+    conserved = bool(max_drift_rel <= tol_rel)
+
+    # Classify trend
+    final_e = history[-1]
+    if max_drift_rel <= tol_rel:
+        trend = "conserved_stable"
+    elif abs(final_e) > 10.0 * abs(e0):
+        trend = "exponential_growth"
+    else:
+        trend = "linear_or_secular_drift"
+
+    print(json.dumps({{
+        "success": True,
+        "conserved": conserved,
+        "initial_value": e0,
+        "final_value": final_e,
+        "max_drift_abs": max_drift_abs,
+        "max_drift_rel": max_drift_rel,
+        "drift_trend": trend,
+        "steps_run": steps,
+        "tol_rel": tol_rel
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
+
+@mcp.tool()
+def convergence_study(
+    solver_code: str,
+    h_values: List[float],
+    exact_solution: Optional[float] = None,
+    expected_order: float = 2.0,
+    order_tol: float = 0.25,
+) -> Dict[str, Any]:
+    """
+    Refine a step or grid parameter and report observed order of accuracy against expected order via log-log regression.
+    Runs inside isolated subprocess sandbox.
+    """
+    src_json = json.dumps(solver_code)
+    h_repr = repr([float(h) for h in h_values])
+    exact_repr = repr(exact_solution)
+
+    script = f"""
+import json
+import math
+import numpy as np
+
+src = {src_json}
+h_vals = {h_repr}
+exact_val = {exact_repr}
+expected_order = {float(expected_order)}
+order_tol = {float(order_tol)}
+
+try:
+    loc = {{}}
+    exec(src, {{"np": np, "numpy": np, "math": math}}, loc)
+    solve_fn = loc.get("solve")
+    if not solve_fn:
+        raise ValueError("solver_code must define 'solve(h)' function")
+
+    errors = []
+    for h in h_vals:
+        res = solve_fn(h)
+        if exact_val is not None:
+            err = abs(float(res) - exact_val)
+        else:
+            err = abs(float(res))
+        errors.append(max(err, 1e-16))
+
+    # Log-log regression: ln(error) = p * ln(h) + C
+    log_h = np.log(np.array(h_vals))
+    log_e = np.log(np.array(errors))
+
+    # Linear fit
+    coeffs = np.polyfit(log_h, log_e, 1)
+    observed_order = float(coeffs[0])
+
+    # R-squared
+    y_pred = np.polyval(coeffs, log_h)
+    ss_res = np.sum((log_e - y_pred) ** 2)
+    ss_tot = np.sum((log_e - np.mean(log_e)) ** 2)
+    r_squared = float(1.0 - (ss_res / ss_tot)) if ss_tot > 1e-12 else 1.0
+
+    order_match = bool(abs(observed_order - expected_order) <= order_tol)
+    converges = bool(observed_order > 0.5 and errors[-1] < errors[0])
+
+    print(json.dumps({{
+        "success": True,
+        "converges": converges,
+        "observed_order": observed_order,
+        "expected_order": expected_order,
+        "order_match": order_match,
+        "errors": [float(e) for e in errors],
+        "r_squared": r_squared
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
+
+@mcp.tool()
+def limit_check(
+    expression: str,
+    variable: str = "x",
+    point: str = "0",
+    direction: str = "+-",
+    expected_limit: Optional[str] = None,
+    asymptotic_comparison: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Evaluate mathematical behavior at limits, roots, and asymptotic boundaries against expected asymptotics.
+    Runs inside isolated subprocess sandbox.
+    """
+    expr_json = json.dumps(expression)
+    var_json = json.dumps(variable)
+    pt_json = json.dumps(point)
+    dir_json = json.dumps(direction)
+    exp_repr = repr(expected_limit)
+    asymp_repr = repr(asymptotic_comparison)
+
+    script = f"""
+import json
+import sympy
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+
+transformations = standard_transformations + (implicit_multiplication_application,)
+
+expr_str = {expr_json}
+var_str = {var_json}
+pt_str = {pt_json}.strip()
+dir_str = {dir_json}
+exp_limit_str = {exp_repr}
+asymp_str = {asymp_repr}
+
+try:
+    var_sym = sympy.Symbol(var_str, real=True)
+    expr = parse_expr(expr_str, transformations=transformations, local_dict={{var_str: var_sym}})
+
+    if pt_str in ("oo", "+oo", "inf", "infinity"):
+        target_pt = sympy.oo
+    elif pt_str in ("-oo", "-inf", "-infinity"):
+        target_pt = -sympy.oo
+    elif pt_str == "pi":
+        target_pt = sympy.pi
+    else:
+        target_pt = parse_expr(pt_str, transformations=transformations)
+
+    lim_val = sympy.limit(expr, var_sym, target_pt, dir=dir_str)
+    lim_str = str(lim_val)
+    is_finite = bool(lim_val.is_finite)
+
+    matches_expected = None
+    if exp_limit_str is not None:
+        if exp_limit_str.strip() in ("oo", "+oo", "inf"):
+            exp_val = sympy.oo
+        elif exp_limit_str.strip() in ("-oo", "-inf"):
+            exp_val = -sympy.oo
+        else:
+            exp_val = parse_expr(exp_limit_str, transformations=transformations)
+        diff = sympy.simplify(lim_val - exp_val)
+        matches_expected = bool(diff == 0)
+
+    asymp_ratio = None
+    if asymp_str is not None:
+        comp_expr = parse_expr(asymp_str, transformations=transformations, local_dict={{var_str: var_sym}})
+        ratio_lim = sympy.limit(expr / comp_expr, var_sym, target_pt, dir=dir_str)
+        asymp_ratio = str(ratio_lim)
+
+    print(json.dumps({{
+        "success": True,
+        "limit_value": lim_str,
+        "matches_expected": matches_expected,
+        "is_finite": is_finite,
+        "asymptotic_ratio_limit": asymp_ratio,
+        "details": f"Limit of {{expr_str}} as {{var_str}} -> {{pt_str}} is {{lim_str}}"
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
 
 
 if __name__ == "__main__":

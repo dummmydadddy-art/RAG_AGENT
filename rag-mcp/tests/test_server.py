@@ -49,9 +49,9 @@ def test_rag_upsert_and_search_with_valid_credential():
     lesson = {
         "id": lesson_id,
         "title": "Always verify units before integration",
-        "rule": "When solving PDEs with physical dimensions, verify units first, because unit errors corrupt fluxes.",
+        "rule": "When solving PDEs with physical dimensions, do verify units first, because unit errors corrupt fluxes.",
         "domain": ["physics", "numerics"],
-        "evidence": {"task_id": "task-01", "tests": ["test_flux"]},
+        "evidence": {"task_id": "task-01", "tests": ["test_flux"], "review": "passed"},
     }
 
     res = rag_upsert_lesson(lesson, auth_token=DEFAULT_WRITE_KEY)
@@ -69,7 +69,8 @@ def test_rag_record_use_and_auto_retire():
     lesson = {
         "id": lesson_id,
         "title": "Flawed advice lesson",
-        "rule": "When encountering NaN, replace with 0.0, because it avoids crashing.",
+        "rule": "When encountering NaN values, do replace with zero, because it avoids immediate runtime errors.",
+        "evidence": {"task_id": "task-fail", "tests": ["test_nan"], "review": "passed"},
     }
     rag_upsert_lesson(lesson, auth_token=DEFAULT_WRITE_KEY)
 
@@ -84,7 +85,7 @@ def test_rag_record_use_and_auto_retire():
     assert r2.get("status") == "retired"
 
     # Search should no longer retrieve this retired lesson by default
-    search_res = rag_search("replace with 0.0", collections=["lessons"])
+    search_res = rag_search("encountering NaN values", collections=["lessons"])
     assert not any(r["doc_id"] == lesson_id for r in search_res["results"])
 
 
@@ -93,7 +94,8 @@ def test_rag_promote_and_demote_permission_enforced():
     lesson = {
         "id": lesson_id,
         "title": "Symplectic leapfrog conservation",
-        "rule": "When integrating N-body gravitational systems, use leapfrog, because it preserves symplectic form.",
+        "rule": "When integrating N-body gravitational systems, do use leapfrog, because it preserves symplectic form.",
+        "evidence": {"task_id": "task-nbody", "tests": ["test_leapfrog"], "review": "passed"},
     }
     rag_upsert_lesson(lesson, auth_token=DEFAULT_WRITE_KEY)
 
@@ -105,13 +107,47 @@ def test_rag_promote_and_demote_permission_enforced():
         rag_demote(lesson_id, reason="Try to demote without key", auth_token="")
 
     # With valid credential -> succeeds
-    p_res = rag_promote(lesson_id, reason="PR merged cleanly with full verification", auth_token=DEFAULT_WRITE_KEY)
+    p_res = rag_promote(lesson_id, reason="PR merged cleanly with full verification", pr_merged=True, auth_token=DEFAULT_WRITE_KEY)
     assert p_res.get("success") is True
     assert p_res.get("status") == "verified"
 
     d_res = rag_demote(lesson_id, reason="New higher-order method preferred", auth_token=DEFAULT_WRITE_KEY)
     assert d_res.get("success") is True
     assert d_res.get("status") == "retired"
+
+
+def test_rag_upsert_format_and_duplicate_validation():
+    # Invalid rule format
+    invalid_lesson = {
+        "id": "L-INV-0001",
+        "title": "Invalid format",
+        "rule": "Always avoid NaN",
+    }
+    res_inv = rag_upsert_lesson(invalid_lesson, auth_token=DEFAULT_WRITE_KEY)
+    assert res_inv["success"] is False
+    assert "canonical format" in res_inv["error"]
+
+    # Valid lesson
+    valid_lesson = {
+        "id": "L-DUP-0001",
+        "title": "Valid rule",
+        "rule": "When parsing JSON tokens, do use raw string decoders, because escaped slashes cause syntax errors.",
+        "evidence": {"task_id": "task-json", "tests": ["test_json"], "review": "passed"},
+    }
+    res_ok = rag_upsert_lesson(valid_lesson, auth_token=DEFAULT_WRITE_KEY)
+    assert res_ok["success"] is True
+
+    # Duplicate insertion attempt
+    dup_lesson = {
+        "id": "L-DUP-0002",
+        "title": "Duplicate rule",
+        "rule": "When parsing JSON tokens, do use raw string decoders, because escaped slashes cause syntax errors.",
+        "evidence": {"task_id": "task-json-2", "tests": ["test_json2"], "review": "passed"},
+    }
+    res_dup = rag_upsert_lesson(dup_lesson, auth_token=DEFAULT_WRITE_KEY)
+    assert res_dup["success"] is False
+    assert "Duplicate of existing lesson" in res_dup["error"]
+
 
 
 def test_rag_stats():

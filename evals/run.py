@@ -14,8 +14,10 @@ from typing import Any, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "rag-adapter"))
 
 from evals.crypto_utils import decrypt_evals
+from rag_adapter.sqlite_backend import LocalSqliteRagBackend
 from scripts.snapshot_store import get_store_hash, reset_store, snapshot_store
 
 TASKS_DIR = ROOT / "evals" / "tasks"
@@ -112,17 +114,30 @@ def run_single_iteration(
     iteration: int,
     auto_mode: bool,
     headless_mode: bool,
+    lessons_mode: str = "off",
 ) -> dict[str, Any]:
     """Runs a single iteration of a task and grades it using pytest."""
     target_file = ROOT / meta["target_file"]
     title = meta["title"]
     held_out = meta.get("held_out", False)
 
+    retrieved_lessons: List[str] = []
+    if lessons_mode == "on":
+        backend = LocalSqliteRagBackend(str(ROOT / "backend" / "storage" / "vectors.sqlite"))
+        # Search relevant lessons for this task domain / keywords
+        query = f"{meta.get('title', '')} {meta.get('category', '')}"
+        hits = backend.search_lessons(query=query, k=5)
+        retrieved_lessons = [h.doc_id for h in hits]
+        if retrieved_lessons:
+            print(f"  [Run {iteration}] [LESSONS RETRIEVED] {', '.join(retrieved_lessons)}")
+
     prompt = (
         f"/rag-gsd {task_id}: {title}\n\n"
         f"Contract Specification:\nSee evals/tasks/{task_id}/README.md\n\n"
         f"Target Implementation File: {meta['target_file']}\n"
     )
+    if retrieved_lessons:
+        prompt += f"\nActive Retrieved Lessons: {', '.join(retrieved_lessons)}\n"
 
     start_time = time.perf_counter()
 
@@ -216,6 +231,7 @@ def run_single_iteration(
         "wall_time": round(elapsed_time, 2),
         "details": output,
         "held_out": held_out,
+        "retrieved_lessons": retrieved_lessons,
     }
 
 
@@ -283,7 +299,7 @@ def main():
         runs = []
         for r in range(1, args.repeat + 1):
             # Reset store between runs to maintain hygiene
-            reset_store()
+            reset_store(purge_lessons=(args.lessons != "on"))
             res = run_single_iteration(
                 task_id=task_id,
                 meta=meta,
@@ -291,6 +307,7 @@ def main():
                 iteration=r,
                 auto_mode=args.auto,
                 headless_mode=args.headless,
+                lessons_mode=args.lessons,
             )
             runs.append(res)
 
@@ -305,6 +322,7 @@ def main():
 
         print(f"\nTask Result: {task_id} -> {overall_status} ({passed_runs}/{args.repeat} runs passed)")
 
+        all_retrieved = list(dict.fromkeys(l for r in runs for l in r.get("retrieved_lessons", [])))
         task_results.append({
             "task_id": task_id,
             "title": title,
@@ -316,6 +334,7 @@ def main():
             "mean_wall_time_sec": round(mean_wall_time, 2),
             "mean_iterations": mean_iterations,
             "runs": runs,
+            "retrieved_lessons": all_retrieved,
             "store_hash": store_hash,
             "backend_identity": backend_id,
             "retrieval_mode": args.retrieval_mode,
@@ -365,14 +384,15 @@ def main():
         f"- **Mean Wall Time**: {ho_stats['mean_time']}s",
         f"- **Mean Iterations**: {ho_stats['mean_iter']}",
         f"\n## Detailed Task Summary",
-        f"| Task ID | Title | Category | Held-Out | Overall Status | Runs Passed | Mean Time (s) |",
-        f"|---|---|---|---|---|---|---|",
+        f"| Task ID | Title | Category | Held-Out | Overall Status | Runs Passed | Mean Time (s) | Lessons Retrieved |",
+        f"|---|---|---|---|---|---|---|---|",
     ]
 
     for t in task_results:
         ho_str = "Yes" if t["held_out"] else "No"
         runs_str = f"{t['passed_runs']}/{t['total_runs']}"
-        lines.append(f"| `{t['task_id']}` | {t['title']} | `{t['category']}` | {ho_str} | **{t['overall_status']}** | {runs_str} | {t['mean_wall_time_sec']}s |")
+        ret_str = ", ".join(t["retrieved_lessons"]) if t["retrieved_lessons"] else "None"
+        lines.append(f"| `{t['task_id']}` | {t['title']} | `{t['category']}` | {ho_str} | **{t['overall_status']}** | {runs_str} | {t['mean_wall_time_sec']}s | {ret_str} |")
 
     lines.append("\n## Per-Run Breakdown")
     for t in task_results:

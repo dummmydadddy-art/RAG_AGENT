@@ -160,3 +160,94 @@ class LocalSqliteRagBackend(RagAdapter):
             cursor = conn.cursor()
             cursor.execute("DELETE FROM rag_documents WHERE collection = ? AND id = ?", (collection, doc_id))
             conn.commit()
+
+    def upsert_lesson(self, lesson: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Helper method to store a lesson dictionary with standardized schema.
+        """
+        lesson_id = lesson.get("id")
+        title = lesson.get("title", "")
+        rule = lesson.get("rule", "")
+        status = lesson.get("status", LessonStatus.CANDIDATE)
+
+        meta = {
+            "title": title,
+            "rule": rule,
+            "domain": lesson.get("domain", []),
+            "evidence": lesson.get("evidence", {}),
+            "status": status,
+            "created_at": lesson.get("created_at") or "",
+            "last_used_at": lesson.get("last_used_at"),
+            "use_count": int(lesson.get("use_count", 0)),
+            "success_count": int(lesson.get("success_count", 0)),
+            "fail_count": int(lesson.get("fail_count", 0)),
+            "supersedes": lesson.get("supersedes", []),
+        }
+
+        self.upsert(
+            collection="lessons",
+            doc_id=lesson_id,
+            text=f"{title}\n{rule}",
+            metadata=meta,
+        )
+        return {"success": True, "lesson_id": lesson_id, "status": status}
+
+    def record_lesson_use(self, lesson_id: str, success: bool, task_id: str = "") -> Dict[str, Any]:
+        """
+        Record outcome of lesson application and enforce auto-retirement invariants.
+        """
+        from datetime import datetime
+        doc = self.get("lessons", lesson_id)
+        if not doc:
+            return {"success": False, "error": f"Lesson {lesson_id} not found"}
+
+        meta = doc.metadata or {}
+        meta["use_count"] = int(meta.get("use_count", 0)) + 1
+        if success:
+            meta["success_count"] = int(meta.get("success_count", 0)) + 1
+        else:
+            meta["fail_count"] = int(meta.get("fail_count", 0)) + 1
+
+        meta["last_used_at"] = datetime.utcnow().isoformat()
+        if task_id:
+            meta.setdefault("used_in_tasks", []).append(task_id)
+
+        # Automatic retirement check: 2 failures with < 50% success
+        retired = False
+        fail_count = meta["fail_count"]
+        total = meta["success_count"] + fail_count
+        if fail_count >= 2 and (meta["success_count"] / total) < 0.5:
+            meta["status"] = LessonStatus.RETIRED
+            meta["status_reason"] = f"Auto-retired: {fail_count} failures out of {total} uses (<50% success)"
+            retired = True
+
+        self.upsert("lessons", lesson_id, doc.text, meta)
+        return {
+            "success": True,
+            "lesson_id": lesson_id,
+            "use_count": meta["use_count"],
+            "success_count": meta["success_count"],
+            "fail_count": meta["fail_count"],
+            "retired": retired,
+            "status": meta["status"],
+        }
+
+    def search_lessons(self, query: str, k: int = 5) -> List[Hit]:
+        """
+        Search lessons collection with prioritization:
+        - Excludes retired lessons.
+        - Prioritizes verified lessons over candidate lessons.
+        - Capped at k.
+        """
+        all_hits = self.search(query=query, collections=["lessons"], k=100)
+        # Filter out retired and sort verified first, then by match score
+        filtered = [h for h in all_hits if h.metadata.get("status") != LessonStatus.RETIRED]
+        filtered.sort(
+            key=lambda h: (
+                1 if h.metadata.get("status") == LessonStatus.VERIFIED else 0,
+                h.score,
+            ),
+            reverse=True,
+        )
+        return filtered[:k]
+
