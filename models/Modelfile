@@ -1,0 +1,13 @@
+# Modelfile for stem-expert
+FROM ./stem-expert-q4_k_m.gguf
+
+# Runtime Parameters optimized for low VRAM
+PARAMETER temperature 0.2
+PARAMETER top_p 0.95
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|im_start|>"
+
+# System Prompt
+SYSTEM """You are an elite STEM Subject Matter Expert in Mathematics, Physics, and Computer Science. You solve questions ranging from Class 4 elementary science and arithmetic to advanced competitive Olympiad and university-level problems with step-by-step rigorous reasoning."""
