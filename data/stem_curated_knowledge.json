@@ -1,0 +1,907 @@
+[
+  {
+    "id": "STEM-MATH-ELEM-001",
+    "title": "Multi-Digit Multiplication and Long Division with Remainders",
+    "domain": "maths",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Multiplication is repeated addition of equal groups: a * b means 'a groups of b'. Long division partitions a dividend into equal parts given a divisor: Dividend = (Divisor * Quotient) + Remainder, where 0 <= Remainder < Divisor.",
+    "example_problem": "A school library receives 458 science books to distribute equally among 14 classrooms. How many books does each classroom receive, and how many books remain unassigned?",
+    "solution_steps": "1. Set up division: 458 / 14.\n2. Divide 45 by 14: 14 * 3 = 42. Quotient tens digit is 3. Remainder: 45 - 42 = 3.\n3. Bring down 8 to make 38.\n4. Divide 38 by 14: 14 * 2 = 28. Quotient units digit is 2. Remainder: 38 - 28 = 10.\n5. Verify: 14 * 32 + 10 = 448 + 10 = 458. Remainder 10 < Divisor 14.\nEach classroom receives 32 books, and 10 books remain unassigned.",
+    "tags": [
+      "arithmetic",
+      "division",
+      "remainders",
+      "elementary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-ELEM-002",
+    "title": "Fractions and Mixed Numbers: Common Denominators and Arithmetic",
+    "domain": "maths",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "A fraction a/b represents 'a' parts of a whole divided into 'b' equal parts. To add or subtract fractions with unlike denominators, convert them to equivalent fractions using the Least Common Multiple (LCM) of the denominators: a/b + c/d = (a*d + b*c)/(b*d).",
+    "example_problem": "Maria pours 3/4 liter of orange juice and 2/3 liter of mango juice into a pitcher. What is the total volume of juice in liters expressed as a mixed number?",
+    "solution_steps": "1. Identify denominators: 4 and 3.\n2. Find LCM(4, 3) = 12.\n3. Convert to equivalent fractions: 3/4 = (3*3)/(4*3) = 9/12; 2/3 = (2*4)/(3*4) = 8/12.\n4. Add numerators: 9/12 + 8/12 = 17/12.\n5. Convert improper fraction to mixed number: 17 / 12 = 1 with remainder 5.\nTotal volume = 1 5/12 liters.",
+    "tags": [
+      "fractions",
+      "lcm",
+      "mixed_numbers",
+      "elementary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-ELEM-003",
+    "title": "Perimeter and Area of Rectangles and Composite 2D Shapes",
+    "domain": "maths",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Perimeter is the total boundary length around a 2D shape. For a rectangle with length L and width W: Perimeter P = 2*(L + W). Area is the total surface enclosed: Area A = L * W. For composite shapes, decompose into non-overlapping rectangles and sum their individual areas.",
+    "example_problem": "An L-shaped garden plot consists of a main rectangle of 10 meters by 6 meters, with an adjacent rectangular flowerbed extension of 4 meters by 3 meters. Find the total area and fencing needed if the shared boundary requires no fence.",
+    "solution_steps": "1. Area of main rectangle A1 = 10 m * 6 m = 60 m².\n2. Area of extension A2 = 4 m * 3 m = 12 m².\n3. Total area A = A1 + A2 = 60 + 12 = 72 m².\n4. For perimeter, trace external boundary segments: 10 + 6 + 6 + 3 + 4 + 9 = 38 meters.\nTotal area is 72 m² and required fencing perimeter is 38 m.",
+    "tags": [
+      "geometry",
+      "perimeter",
+      "area",
+      "composite_shapes",
+      "elementary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-ELEM-001",
+    "title": "States of Matter: Solids, Liquids, Gases, and Phase Transitions",
+    "domain": "physics",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Matter exists in three primary states: Solids have fixed shape and fixed volume (molecules tightly packed in rigid lattice). Liquids have variable shape but fixed volume (molecules flow past one another). Gases have variable shape and variable volume (molecules move freely at high speeds). Adding thermal energy causes melting (solid to liquid) and evaporation/boiling (liquid to gas). Removing thermal energy causes condensation and freezing.",
+    "example_problem": "Explain why an ice cube floats in liquid water and what happens to the water level in a full glass when the ice cube melts completely.",
+    "solution_steps": "1. Ice floats because water expands upon freezing into a hexagonal crystalline lattice, making solid ice less dense (density ~0.917 g/cm³) than liquid water (~1.00 g/cm³).\n2. According to Archimedes' principle, the floating ice cube displaces a mass of liquid water equal to its own mass.\n3. When the ice melts completely, it converts into liquid water having the exact same mass and therefore occupying precisely the volume displaced previously.\n4. Conclusion: The water level in the glass remains completely unchanged.",
+    "tags": [
+      "states_of_matter",
+      "density",
+      "phase_change",
+      "archimedes",
+      "elementary_science"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-ELEM-002",
+    "title": "Simple Machines: Levers, Mechanical Advantage, and Effort",
+    "domain": "physics",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "A simple machine alters the magnitude or direction of an applied force. In a Class 1 lever, the fulcrum sits between effort and load. The Law of the Lever states: Effort * Effort_Arm = Load * Load_Arm. Ideal Mechanical Advantage (IMA) = Effort_Arm / Load_Arm.",
+    "example_problem": "A child applies effort to lift a 60 kg stone using a 2.5-meter rigid crowbar as a lever. If the fulcrum is placed 0.5 meters from the stone, how much effort force (in kgf) is needed to balance the stone?",
+    "solution_steps": "1. Identify lever arms: Total length = 2.5 m. Load arm = 0.5 m. Effort arm = 2.5 - 0.5 = 2.0 m.\n2. Load = 60 kgf.\n3. Apply torque equilibrium: Effort * Effort_Arm = Load * Load_Arm.\n4. Effort * 2.0 = 60 * 0.5 = 30.\n5. Effort = 30 / 2.0 = 15 kgf.\nAn effort of only 15 kgf is required, yielding a mechanical advantage of 4:1.",
+    "tags": [
+      "simple_machines",
+      "levers",
+      "mechanical_advantage",
+      "torque",
+      "elementary_science"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-ELEM-003",
+    "title": "Light: Rectilinear Propagation, Shadows, and Reflection",
+    "domain": "physics",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Light travels in straight lines (rectilinear propagation) through homogeneous transparent media. When an opaque obstacle blocks light rays, a dark shadow is cast behind it consisting of an umbra (total shadow) and penumbra (partial shadow). Law of Reflection: Angle of incidence equals angle of reflection (θi = θr).",
+    "example_problem": "A 1.5-meter vertical stick casts a 2.0-meter shadow on flat ground. At the same moment, a nearby tree casts a 16.0-meter shadow. How tall is the tree?",
+    "solution_steps": "1. Light rays from the sun arrive parallel to each other, creating similar right-angled triangles.\n2. Ratio of Height to Shadow for stick: 1.5 m / 2.0 m = 0.75.\n3. For the tree: Height_tree / Shadow_tree = 0.75.\n4. Height_tree = 0.75 * 16.0 m = 12.0 meters.\nThe tree is 12.0 meters tall.",
+    "tags": [
+      "optics",
+      "light",
+      "shadows",
+      "reflection",
+      "elementary_science"
+    ]
+  },
+  {
+    "id": "STEM-CODE-ELEM-001",
+    "title": "Algorithms, Variables, and Control Flow (Conditionals & Loops)",
+    "domain": "coding",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "An algorithm is an unambiguous step-by-step sequence of instructions to solve a task. Variables store data values in named memory locations. Conditional statements (if/else) allow branching decisions based on boolean truth. Loops (for/while) repeat actions until a termination condition is met.",
+    "example_problem": "Write a clean Python program that computes the sum of all even numbers from 1 up to a given positive integer N inclusive, and prints whether the total sum is greater than 100.",
+    "solution_steps": "```python\ndef sum_even_numbers(n: int) -> int:\n    total = 0\n    for num in range(1, n + 1):\n        if num % 2 == 0:\n            total += num\n    return total\n\nn = 20\ntotal = sum_even_numbers(n)\nprint(f'Sum of evens up to {n}: {total}')\nif total > 100:\n    print('The sum is greater than 100')\nelse:\n    print('The sum is 100 or less')\n```\nExplanation:\n1. Initialize accumulator `total = 0`.\n2. Iterate through integers from 1 to N.\n3. Check parity using modulo `% 2 == 0`.\n4. Add even values and check threshold with if/else.",
+    "tags": [
+      "programming_basics",
+      "loops",
+      "conditionals",
+      "python",
+      "elementary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SEC-001",
+    "title": "Quadratic Equations, Discriminant Analysis, and the Quadratic Formula",
+    "domain": "maths",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "A quadratic equation has the general form ax² + bx + c = 0 (with a ≠ 0). Solutions are given by the quadratic formula: x = (-b ± √(b² - 4ac)) / (2a). The discriminant Δ = b² - 4ac governs root nature: Δ > 0 yields two distinct real roots, Δ = 0 yields one repeated real root, and Δ < 0 yields two complex conjugate roots.",
+    "example_problem": "Solve 2x² - 7x + 3 = 0, analyze the discriminant, and compute the coordinates of the parabola's vertex.",
+    "solution_steps": "1. Identify coefficients: a = 2, b = -7, c = 3.\n2. Compute discriminant: Δ = b² - 4ac = (-7)² - 4(2)(3) = 49 - 24 = 25.\n3. Since Δ = 25 > 0, there are two distinct real roots.\n4. Compute roots: x = (-(-7) ± √25) / (2 * 2) = (7 ± 5) / 4.\n   x1 = (7 + 5) / 4 = 12 / 4 = 3.\n   x2 = (7 - 5) / 4 = 2 / 4 = 0.5 (1/2).\n5. Vertex coordinates: x_v = -b / (2a) = 7 / 4 = 1.75.\n   y_v = 2(7/4)² - 7(7/4) + 3 = 2(49/16) - 49/4 + 3 = 49/8 - 98/8 + 24/8 = -25/8 = -3.125.\nRoots are x = 3 and x = 0.5; Vertex is (1.75, -3.125).",
+    "tags": [
+      "algebra",
+      "quadratic_equations",
+      "discriminant",
+      "parabola",
+      "secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SEC-002",
+    "title": "Euclidean Geometry, Similar Triangles, and Pythagorean Theorem",
+    "domain": "maths",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "In a right triangle with legs a and b and hypotenuse c: a² + b² = c². Two triangles are similar if their corresponding angles are equal and corresponding sides are in constant proportion: a1/a2 = b1/b2 = c1/c2. The altitude h to the hypotenuse divides the triangle into two similar triangles, where h² = p * q (geometric mean theorem).",
+    "example_problem": "In right-angled triangle ABC with right angle at C, legs are AC = 6 cm and BC = 8 cm. An altitude CD is drawn from C perpendicular to hypotenuse AB. Calculate the length of hypotenuse AB and altitude CD.",
+    "solution_steps": "1. Apply Pythagorean theorem on ABC: AB = √(AC² + BC²) = √(6² + 8²) = √(36 + 64) = √100 = 10 cm.\n2. Express the area of triangle ABC in two equivalent ways:\n   Method A: Area = 0.5 * base * height = 0.5 * AC * BC = 0.5 * 6 * 8 = 24 cm².\n   Method B: Area = 0.5 * hypotenuse * altitude = 0.5 * AB * CD = 0.5 * 10 * CD = 5 * CD.\n3. Equate areas: 5 * CD = 24 => CD = 24 / 5 = 4.8 cm.\nHypotenuse AB = 10 cm and altitude CD = 4.8 cm.",
+    "tags": [
+      "geometry",
+      "pythagorean_theorem",
+      "similar_triangles",
+      "secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SEC-003",
+    "title": "Trigonometric Ratios and Fundamental Identities",
+    "domain": "maths",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "For acute angle θ in a right triangle: sin θ = Opposite/Hypotenuse, cos θ = Adjacent/Hypotenuse, tan θ = Opposite/Adjacent = sin θ / cos θ. Fundamental Pythagorean identity: sin² θ + cos² θ = 1, 1 + tan² θ = sec² θ, and 1 + cot² θ = csc² θ.",
+    "example_problem": "If sin θ = 5/13 and θ is an acute angle, find the exact values of cos θ, tan θ, and prove that 1 + tan² θ = sec² θ.",
+    "solution_steps": "1. Use identity sin² θ + cos² θ = 1 => cos² θ = 1 - (5/13)² = 1 - 25/169 = 144/169.\n2. Since θ is acute, cos θ = √(144/169) = 12/13.\n3. tan θ = sin θ / cos θ = (5/13) / (12/13) = 5/12.\n4. sec θ = 1 / cos θ = 13/12.\n5. Verify 1 + tan² θ = 1 + (5/12)² = 1 + 25/144 = 169/144.\n6. Compute sec² θ = (13/12)² = 169/144. Both sides are identical.",
+    "tags": [
+      "trigonometry",
+      "trigonometric_identities",
+      "sine",
+      "cosine",
+      "secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SEC-001",
+    "title": "Newton's Three Laws of Motion and Momentum Conservation",
+    "domain": "physics",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "First Law (Inertia): An object remains at rest or constant velocity unless acted upon by a net external force. Second Law: F_net = dp/dt = m*a (for constant mass). Third Law: For every action, there is an equal and opposite reaction (F_AB = -F_BA). Law of Conservation of Linear Momentum: In an isolated system (F_ext = 0), total linear momentum is conserved: m1*u1 + m2*u2 = m1*v1 + m2*v2.",
+    "example_problem": "A 1200 kg car travelling at 25 m/s collides head-on with a stationary 800 kg trailer. If they lock bumpers upon collision, what is their combined velocity immediately after impact?",
+    "solution_steps": "1. Identify parameters: m1 = 1200 kg, u1 = 25 m/s, m2 = 800 kg, u2 = 0 m/s.\n2. Total initial momentum p_initial = m1*u1 + m2*u2 = (1200 * 25) + 0 = 30,000 kg·m/s.\n3. Since they lock together, combined mass M = m1 + m2 = 1200 + 800 = 2000 kg.\n4. Apply conservation of momentum: p_final = M * v = p_initial.\n5. 2000 * v = 30,000 => v = 30,000 / 2000 = 15 m/s.\nTheir combined velocity immediately after collision is 15 m/s.",
+    "tags": [
+      "mechanics",
+      "newtons_laws",
+      "momentum_conservation",
+      "secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SEC-002",
+    "title": "Work, Kinetic Energy, Potential Energy, and Power",
+    "domain": "physics",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Work done W = F * d * cos(θ) (in Joules). Work-Energy Theorem: Total work done equals change in kinetic energy: W_net = ΔKE = 0.5*m*v_f² - 0.5*m*v_i². Gravitational potential energy PE = m*g*h. In conservative systems: Total Mechanical Energy E = KE + PE = constant. Power is rate of doing work: P = W / t = F * v (in Watts).",
+    "example_problem": "A roller coaster cart of mass 500 kg starts from rest at the top of a hill of height h = 45 meters. Neglecting friction and air resistance, calculate its speed at the bottom of the hill and the average power required to haul it back up in 30 seconds (g = 9.8 m/s²).",
+    "solution_steps": "1. At peak, initial KE = 0, initial PE = m * g * h = 500 * 9.8 * 45 = 220,500 J.\n2. At bottom, PE = 0, all energy converts to kinetic energy: KE_final = 0.5 * m * v² = 220,500 J.\n3. Solve for v: 0.5 * 500 * v² = 220,500 => 250 * v² = 220,500 => v² = 882 => v = √882 ≈ 29.70 m/s.\n4. Work needed to haul cart back up: W = ΔPE = 220,500 J.\n5. Power = W / t = 220,500 J / 30 s = 7,350 Watts (7.35 kW).\nSpeed at bottom is 29.7 m/s; Average lifting power is 7.35 kW.",
+    "tags": [
+      "energy",
+      "work",
+      "kinetic_energy",
+      "potential_energy",
+      "power",
+      "secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SEC-003",
+    "title": "Ohm's Law, Joule Heating, and Electric Circuit Analysis",
+    "domain": "physics",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Ohm's Law: Potential difference across a conductor is proportional to current under constant temperature: V = I * R. Series resistors: R_eq = R1 + R2 + ... + Rn. Parallel resistors: 1/R_eq = 1/R1 + 1/R2 + ... + 1/Rn. Electrical power and Joule heating: P = V * I = I² * R = V² / R.",
+    "example_problem": "A circuit contains a 12V battery connected to a 4Ω resistor in series with a parallel pair of 6Ω and 3Ω resistors. Calculate the equivalent resistance, total current drawn from the battery, and power dissipated in the 3Ω resistor.",
+    "solution_steps": "1. Compute parallel combination of 6Ω and 3Ω:\n   1/R_p = 1/6 + 1/3 = 1/6 + 2/6 = 3/6 = 1/2 => R_p = 2Ω.\n2. Total equivalent resistance R_eq = R_series + R_p = 4Ω + 2Ω = 6Ω.\n3. Total circuit current: I_total = V / R_eq = 12V / 6Ω = 2 Amperes.\n4. Voltage across the parallel branch: V_p = I_total * R_p = 2A * 2Ω = 4 Volts.\n5. Current through the 3Ω resistor: I_3 = V_p / 3Ω = 4V / 3Ω = 1.33 A.\n6. Power dissipated in 3Ω resistor: P_3 = V_p² / R = (4)² / 3 = 16 / 3 ≈ 5.33 Watts.\nEquivalent resistance is 6Ω, total current is 2A, and power in 3Ω resistor is 5.33W.",
+    "tags": [
+      "electricity",
+      "ohms_law",
+      "resistors",
+      "circuits",
+      "secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SEC-001",
+    "title": "Divide-and-Conquer: Binary Search and Merge Sort (O(n log n))",
+    "domain": "coding",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Divide and conquer divides a problem into subproblems of the same type, solves them recursively, and combines the solutions. Binary Search operates on sorted arrays in O(log n) time by halving the search space each step. Merge Sort divides an array into halves, recursively sorts them, and merges sorted sub-arrays in O(n log n) time and O(n) auxiliary space.",
+    "example_problem": "Implement a robust Merge Sort algorithm in Python that sorts an array of integers in non-decreasing order and tracks total comparison count.",
+    "solution_steps": "```python\nfrom typing import List, Tuple\n\ndef merge_sort(arr: List[int]) -> Tuple[List[int], int]:\n    comparisons = 0\n    if len(arr) <= 1:\n        return arr, 0\n\n    mid = len(arr) // 2\n    left, left_comp = merge_sort(arr[:mid])\n    right, right_comp = merge_sort(arr[mid:])\n    comparisons += left_comp + right_comp\n\n    merged = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        comparisons += 1\n        if left[i] <= right[j]:\n            merged.append(left[i])\n            i += 1\n        else:\n            merged.append(right[j])\n            j += 1\n    merged.extend(left[i:])\n    merged.extend(right[j:])\n    return merged, comparisons\n\ndata = [38, 27, 43, 3, 9, 82, 10]\nsorted_arr, comps = merge_sort(data)\nprint('Sorted:', sorted_arr, 'Comparisons:', comps)\n```",
+    "tags": [
+      "algorithms",
+      "sorting",
+      "merge_sort",
+      "divide_and_conquer",
+      "secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-HS-001",
+    "title": "Differential Calculus: Chain Rule, Product Rule, and Local Extrema",
+    "domain": "maths",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "The derivative f'(x) = lim(h->0) [f(x+h) - f(x)] / h gives the instantaneous rate of change and slope of the tangent line. Product rule: (u*v)' = u'*v + u*v'. Chain rule for composite functions: d/dx[f(g(x))] = f'(g(x)) * g'(x). Stationary points occur where f'(x) = 0. Second derivative test: f''(x) > 0 indicates a local minimum; f''(x) < 0 indicates a local maximum.",
+    "example_problem": "Find the dimensions of a closed cylindrical tin can of fixed volume V = 1000 cm³ that minimizes the total surface area S.",
+    "solution_steps": "1. Formulas: Volume V = π * r² * h = 1000 => h = 1000 / (π * r²).\n2. Surface Area S = 2*π*r² + 2*π*r*h = 2*π*r² + 2*π*r*(1000 / (π * r²)) = 2*π*r² + 2000 / r.\n3. Take first derivative with respect to r and set to 0:\n   dS/dr = 4*π*r - 2000 / r² = 0 => 4*π*r³ = 2000 => r³ = 500 / π.\n4. Radius r = (500 / π)^(1/3) ≈ (159.15)^(1/3) ≈ 5.42 cm.\n5. Compute height h = 1000 / (π * r²) = 1000 / (π * (500/π)^(2/3)) = 2 * (500/π)^(1/3) = 2r ≈ 10.84 cm.\n6. Verify second derivative: d²S/dr² = 4*π + 4000 / r³ > 0 for all r > 0, confirming a strict global minimum.\nOptimal dimensions: radius r ≈ 5.42 cm and height h = 2r ≈ 10.84 cm.",
+    "tags": [
+      "calculus",
+      "derivatives",
+      "optimization",
+      "extrema",
+      "higher_secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-HS-002",
+    "title": "Integral Calculus: Definite Integrals, Substitution, and Parts",
+    "domain": "maths",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "The Fundamental Theorem of Calculus links derivatives and integrals: ∫(a to b) f(x) dx = F(b) - F(a) where F'(x) = f(x). Integration by Parts: ∫ u dv = u*v - ∫ v du (derived from the product rule).",
+    "example_problem": "Evaluate the definite integral I = ∫(0 to 1) x * e^(2x) dx.",
+    "solution_steps": "1. Choose parts using LIATE rule: u = x => du = dx; dv = e^(2x) dx => v = (1/2) * e^(2x).\n2. Apply integration by parts formula:\n   ∫ x * e^(2x) dx = x * (1/2 * e^(2x)) - ∫ (1/2 * e^(2x)) dx\n   = (1/2) * x * e^(2x) - (1/4) * e^(2x) + C = (1/4) * e^(2x) * (2x - 1) + C.\n3. Evaluate definite integral from 0 to 1:\n   At x = 1: (1/4) * e^(2) * (2(1) - 1) = (1/4) * e².\n   At x = 0: (1/4) * e^(0) * (2(0) - 1) = (1/4) * 1 * (-1) = -1/4.\n4. I = (1/4) * e² - (-1/4) = (e² + 1) / 4 ≈ (7.389 + 1) / 4 = 8.389 / 4 ≈ 2.097.\nThe exact value of the integral is (e² + 1) / 4.",
+    "tags": [
+      "calculus",
+      "integration",
+      "integration_by_parts",
+      "higher_secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-HS-001",
+    "title": "Rotational Dynamics: Torque, Moment of Inertia, and Rolling Motion",
+    "domain": "physics",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Rotational analogue of Newton's second law: τ_net = I * α, where τ is torque (r x F), I is moment of inertia (∫ r² dm), and α is angular acceleration. For rolling without slipping: v_cm = R * ω and a_cm = R * α. Total kinetic energy: KE_total = KE_trans + KE_rot = 0.5 * M * v_cm² + 0.5 * I_cm * ω².",
+    "example_problem": "A solid uniform cylinder of mass M and radius R rolls without slipping down an inclined plane of inclination angle θ. Find its linear acceleration down the incline.",
+    "solution_steps": "1. Moment of inertia of solid cylinder about central axis: I_cm = (1/2) * M * R².\n2. Equations of motion:\n   Linear along incline: M * g * sin(θ) - f_s = M * a_cm (where f_s is static friction).\n   Rotational about CM: τ = f_s * R = I_cm * α.\n3. No-slip constraint: α = a_cm / R => f_s * R = (1/2 * M * R²) * (a_cm / R) => f_s = (1/2) * M * a_cm.\n4. Substitute f_s into linear equation:\n   M * g * sin(θ) - (1/2) * M * a_cm = M * a_cm.\n5. (3/2) * M * a_cm = M * g * sin(θ) => a_cm = (2/3) * g * sin(θ).\nThe linear acceleration of the rolling cylinder is (2/3) * g * sin(θ).",
+    "tags": [
+      "rotational_dynamics",
+      "moment_of_inertia",
+      "torque",
+      "rolling_motion",
+      "higher_secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-HS-002",
+    "title": "Thermodynamics: First Law, Carnot Cycle, and Entropy",
+    "domain": "physics",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "First Law of Thermodynamics: ΔU = Q - W, where U is internal energy, Q is heat added, and W is work done by system. For an ideal gas: ΔU = n * C_v * ΔT. Second Law: No heat engine operating between two thermal reservoirs can be more efficient than a reversible Carnot engine: η_Carnot = 1 - (T_cold / T_hot) (temperatures in Kelvin). Clausius inequality: ∮ dQ / T <= 0.",
+    "example_problem": "A Carnot heat engine operates between a hot reservoir at 500°C and a cold reservoir at 25°C. It absorbs 1200 J of heat per cycle from the hot reservoir. Calculate its theoretical efficiency, work output per cycle, and heat rejected to the cold reservoir.",
+    "solution_steps": "1. Convert temperatures to Kelvin: T_hot = 500 + 273.15 = 773.15 K; T_cold = 25 + 273.15 = 298.15 K.\n2. Carnot efficiency: η = 1 - (T_cold / T_hot) = 1 - (298.15 / 773.15) = 1 - 0.3856 = 0.6144 (61.44%).\n3. Work output per cycle: W = η * Q_in = 0.6144 * 1200 J = 737.28 J.\n4. Heat rejected per cycle: Q_out = Q_in - W = 1200 - 737.28 = 462.72 J.\nEfficiency is 61.44%, useful work output is 737.3 J, and rejected heat is 462.7 J.",
+    "tags": [
+      "thermodynamics",
+      "carnot_cycle",
+      "entropy",
+      "heat_engines",
+      "higher_secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-HS-001",
+    "title": "Dynamic Programming: 0/1 Knapsack with Space Optimization",
+    "domain": "coding",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "The 0/1 Knapsack problem exhibits optimal substructure and overlapping subproblems. Given n items with weights w_i and values v_i, maximize total value within capacity W. Recurrence: dp[i][w] = max(dp[i-1][w], dp[i-1][w - w_i] + v_i). Can be space-optimized to a 1D array of size W+1 by iterating backwards from W down to w_i to preserve state from the previous item.",
+    "example_problem": "Given item weights [2, 3, 4, 5] and values [3, 4, 5, 6] with capacity W = 8, determine the maximum value achievable using 1D DP.",
+    "solution_steps": "```python\nfrom typing import List\n\ndef knapsack_01(weights: List[int], values: List[int], capacity: int) -> int:\n    dp = [0] * (capacity + 1)\n    for w_i, v_i in zip(weights, values):\n        # Iterate backwards to avoid using the same item multiple times\n        for w in range(capacity, w_i - 1, -1):\n            dp[w] = max(dp[w], dp[w - w_i] + v_i)\n    return dp[capacity]\n\nweights = [2, 3, 4, 5]\nvalues = [3, 4, 5, 6]\ncap = 8\nmax_val = knapsack_01(weights, values, cap)\nprint(f'Maximum achievable value: {max_val}')  # Output: 10 (items with weights 3 and 5, or 2, 3 and ...)\n```",
+    "tags": [
+      "dynamic_programming",
+      "knapsack",
+      "space_optimization",
+      "higher_secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SME-001",
+    "title": "Abstract Algebra: Normal Subgroups, Quotient Groups, and First Isomorphism Theorem",
+    "domain": "maths",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "A subgroup N <= G is normal (N ⊲ G) iff g*n*g⁻¹ ∈ N for all g ∈ G, n ∈ N. The cosets G/N form a well-defined group under coset multiplication: (g1*N)(g2*N) = (g1*g2)*N. The First Isomorphism Theorem states that if φ: G -> H is a group homomorphism, then ker(φ) ⊲ G and G / ker(φ) ≅ im(φ).",
+    "example_problem": "Let G = GL(n, R) be the general linear group of invertible n x n real matrices under multiplication, and let φ: G -> R* be the determinant map φ(A) = det(A). Prove that SL(n, R) is a normal subgroup of GL(n, R) and determine the quotient group GL(n, R) / SL(n, R).",
+    "solution_steps": "1. Define map φ: GL(n, R) -> R* by φ(A) = det(A).\n2. Multiplicative property of determinants: det(AB) = det(A) * det(B) for all A, B ∈ GL(n, R).\n   Hence φ is a group homomorphism from (GL(n, R), ·) to (R*, ·).\n3. Find the kernel: ker(φ) = {A ∈ GL(n, R) : det(A) = 1}.\n   By definition, this is the Special Linear Group SL(n, R).\n4. Since the kernel of any group homomorphism is a normal subgroup, SL(n, R) ⊲ GL(n, R).\n5. Determine the image: For any non-zero real scalar c ∈ R*, consider the diagonal matrix diag(c, 1, 1, ..., 1) ∈ GL(n, R). Its determinant is c. Thus φ is surjective (im(φ) = R*).\n6. Apply First Isomorphism Theorem: GL(n, R) / ker(φ) ≅ im(φ) => GL(n, R) / SL(n, R) ≅ (R*, ·).\nConclusion: SL(n, R) is normal in GL(n, R) and the quotient group is isomorphic to the multiplicative group of non-zero reals R*.",
+    "tags": [
+      "abstract_algebra",
+      "group_theory",
+      "isomorphism_theorems",
+      "quotient_groups",
+      "sme_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SME-002",
+    "title": "Complex Analysis: Holomorphic Functions, Cauchy Integral Formula, and Residue Calculus",
+    "domain": "maths",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "A function f(z) = u(x,y) + i*v(x,y) is holomorphic on open domain U ⊆ C iff u and v satisfy Cauchy-Riemann equations: ∂u/∂x = ∂v/∂y and ∂u/∂y = -∂v/∂x. Cauchy's Residue Theorem: For a closed contour γ enclosing isolated singularities z_k: ∮_γ f(z) dz = 2πi * ∑ Res(f, z_k). Residue at a simple pole z0: Res(f, z0) = lim(z->z0) (z - z0)*f(z).",
+    "example_problem": "Compute the improper real integral I = ∫(-∞ to +∞) 1 / (x⁴ + 1) dx using complex contour integration along a semicircular contour in the upper half-plane.",
+    "solution_steps": "1. Consider f(z) = 1 / (z⁴ + 1) and semicircular contour C_R = [-R, R] ∪ Γ_R (upper semicircle |z| = R, Im(z) >= 0).\n2. Poles occur where z⁴ + 1 = 0 => z⁴ = -1 = e^(iπ(2k+1)).\n   Roots in upper half-plane (Im(z) > 0):\n   z1 = e^(iπ/4) = (1 + i) / √2\n   z2 = e^(i3π/4) = (-1 + i) / √2.\n3. Compute residues at simple poles using Res(f, z_k) = 1 / (d/dz [z⁴ + 1])|_{z=z_k} = 1 / (4*z_k³):\n   Res(f, z1) = 1 / (4 * e^(i3π/4)) = (1/4) * e^(-i3π/4) = (1/4) * (-1 - i) / √2.\n   Res(f, z2) = 1 / (4 * e^(i9π/4)) = (1/4) * e^(-iπ/4) = (1/4) * (1 - i) / √2.\n4. Sum residues:\n   Res(z1) + Res(z2) = (1 / (4√2)) * (-1 - i + 1 - i) = (1 / (4√2)) * (-2i) = -i / (2√2).\n5. By Jordan's lemma, as R -> ∞, ∫_Γ_R f(z) dz -> 0 because |f(z)| ~ 1/R⁴.\n6. Apply Residue Theorem:\n   ∫(-∞ to +∞) dx / (x⁴ + 1) = 2πi * ∑ Res = 2πi * (-i / (2√2)) = 2π / (2√2) = π / √2.\nThe exact value of the integral is π / √2.",
+    "tags": [
+      "complex_analysis",
+      "residue_calculus",
+      "contour_integration",
+      "holomorphic",
+      "sme_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SME-001",
+    "title": "Quantum Mechanics: Schrödinger Equation, Commutators, and Harmonic Oscillator",
+    "domain": "physics",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Time-independent Schrödinger Equation: Ĥ|ψ⟩ = E|ψ⟩, where Hamiltonian Ĥ = -ħ²/(2m) ∇² + V(r). Canonical commutation relation: [x̂, p̂] = iħ. For 1D Simple Harmonic Oscillator with V(x) = (1/2)mω²x², define ladder operators: â = √(mω/(2ħ)) (x̂ + i p̂/(mω)) and â† = √(mω/(2ħ)) (x̂ - i p̂/(mω)) satisfying [â, â†] = 1. Hamiltonian becomes Ĥ = ħω(â† â + 1/2). Energy eigenvalues are discrete: E_n = ħω(n + 1/2) for n = 0, 1, 2, ...",
+    "example_problem": "Derive the ground state energy E_0 and ground state wave function ψ_0(x) of the 1D quantum harmonic oscillator using the annihilation operator condition â ψ_0(x) = 0.",
+    "solution_steps": "1. Ladder operator condition for ground state: â ψ_0 = 0, because no state exists below ground state.\n2. Express â in position representation (p̂ = -iħ d/dx):\n   √(mω/(2ħ)) * [x + (i / (mω)) * (-iħ d/dx)] ψ_0(x) = 0\n   [x + (ħ / (mω)) d/dx] ψ_0(x) = 0.\n3. Separate variables for differential equation:\n   dψ_0 / ψ_0 = - (mω / ħ) x dx.\n4. Integrate both sides:\n   ln(ψ_0) = - (mω / (2ħ)) x² + C => ψ_0(x) = A * exp(- mω x² / (2ħ)).\n5. Normalize ∫(-∞ to ∞) |ψ_0(x)|² dx = 1:\n   A² * ∫ exp(- mω x² / ħ) dx = A² * √(πħ / (mω)) = 1 => A = (mω / (πħ))^(1/4).\n6. Ground state energy: E_0 = ⟨ψ_0| Ĥ |ψ_0⟩ = ħω(0 + 1/2) = (1/2) ħω (zero-point energy required by Heisenberg uncertainty principle).\nGround state wave function is ψ_0(x) = (mω / (πħ))^(1/4) * exp(-mω x² / (2ħ)) and ground state energy is (1/2) ħω.",
+    "tags": [
+      "quantum_mechanics",
+      "schrodinger_equation",
+      "harmonic_oscillator",
+      "ladder_operators",
+      "sme_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SME-002",
+    "title": "Classical Mechanics: Lagrangian Formulation, Euler-Lagrange, and Noether's Theorem",
+    "domain": "physics",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Hamilton's Principle of Stationary Action: δS = δ ∫ L(q, q̇, t) dt = 0, where L = T - V is the Lagrangian. Yields Euler-Lagrange equations: d/dt(∂L/∂q̇_i) - ∂L/∂q_i = 0. Noether's Theorem connects symmetries to conserved quantities: Invariance under time translation implies conservation of energy; invariance under spatial translation implies conservation of linear momentum; invariance under spatial rotation implies conservation of angular momentum.",
+    "example_problem": "A planar double pendulum consists of two point masses m1 and m2 attached by two massless rigid rods of lengths l1 and l2 under uniform gravity g. Derive the Lagrangian L(θ1, θ2, θ̇1, θ̇2) of the system.",
+    "solution_steps": "1. Choose generalized coordinates: angles θ1 and θ2 measured from the downward vertical.\n2. Positions of masses in Cartesian coordinates:\n   x1 = l1 sin(θ1), y1 = -l1 cos(θ1)\n   x2 = l1 sin(θ1) + l2 sin(θ2), y2 = -l1 cos(θ1) - l2 cos(θ2).\n3. Velocities (time derivatives):\n   ẋ1 = l1 θ̇1 cos(θ1), ẏ1 = l1 θ̇1 sin(θ1) => v1² = ẋ1² + ẏ1² = l1² θ̇1².\n   ẋ2 = l1 θ̇1 cos(θ1) + l2 θ̇2 cos(θ2), ẏ2 = l1 θ̇1 sin(θ1) + l2 θ̇2 sin(θ2).\n   v2² = l1² θ̇1² + l2² θ̇2² + 2 l1 l2 θ̇1 θ̇2 [cos(θ1)cos(θ2) + sin(θ1)sin(θ2)]\n       = l1² θ̇1² + l2² θ̇2² + 2 l1 l2 θ̇1 θ̇2 cos(θ1 - θ2).\n4. Kinetic Energy T = (1/2) m1 v1² + (1/2) m2 v2²:\n   T = (1/2)(m1 + m2) l1² θ̇1² + (1/2) m2 l2² θ̇2² + m2 l1 l2 θ̇1 θ̇2 cos(θ1 - θ2).\n5. Potential Energy V = m1 g y1 + m2 g y2:\n   V = - (m1 + m2) g l1 cos(θ1) - m2 g l2 cos(θ2).\n6. Formulate Lagrangian L = T - V:\n   L = (1/2)(m1 + m2) l1² θ̇1² + (1/2) m2 l2² θ̇2² + m2 l1 l2 θ̇1 θ̇2 cos(θ1 - θ2) + (m1 + m2) g l1 cos(θ1) + m2 g l2 cos(θ2).\nThe exact Lagrangian is derived.",
+    "tags": [
+      "analytical_mechanics",
+      "lagrangian",
+      "euler_lagrange",
+      "noethers_theorem",
+      "double_pendulum",
+      "sme_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SME-001",
+    "title": "Lock-Free Concurrency: Compare-And-Swap (CAS), Treiber Stack, and Memory Fences",
+    "domain": "coding",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Lock-free synchronization ensures system-wide progress without mutual exclusion mutex locks, preventing deadlocks, priority inversion, and convoying. The core primitive is hardware Compare-And-Swap (CAS): atomic_compare_exchange(ptr, &expected, desired). In C++/Rust/Java memory models, memory orders (acquire/release/seq_cst) establish happens-before relationships preventing compiler and CPU out-of-order reordering across cache lines.",
+    "example_problem": "Implement a thread-safe, lock-free LIFO stack (Treiber Stack) in Python using simulated atomic CAS, and explain how the ABA problem is prevented in production systems.",
+    "solution_steps": "```python\nimport threading\nfrom typing import Any, Optional\n\nclass Node:\n    def __init__(self, value: Any, next_node: Optional['Node'] = None):\n        self.value = value\n        self.next = next_node\n\nclass LockFreeTreiberStack:\n    def __init__(self):\n        self._head: Optional[Node] = None\n        self._lock = threading.Lock()  # Simulates hardware atomic CAS operation\n\n    def _compare_and_swap_head(self, expected: Optional[Node], new_node: Optional[Node]) -> bool:\n        with self._lock:\n            if self._head is expected:\n                self._head = new_node\n                return True\n            return False\n\n    def push(self, val: Any) -> None:\n        new_node = Node(val)\n        while True:\n            current_head = self._head\n            new_node.next = current_head\n            if self._compare_and_swap_head(current_head, new_node):\n                return\n\n    def pop(self) -> Optional[Any]:\n        while True:\n            current_head = self._head\n            if current_head is None:\n                return None\n            next_node = current_head.next\n            if self._compare_and_swap_head(current_head, next_node):\n                return current_head.value\n```\nABA Mitigation:\nIn native systems (C++/Rust), the ABA problem occurs if node A is popped, memory freed, and re-allocated at the same pointer address while another thread is executing CAS. Standard solutions include:\n1. Tagged pointers (storing a 64-bit monotonically increasing version tag alongside pointer, using DCAS / CMPXCHG16B).\n2. Hazard Pointers / Epoch-Based Reclamation (EBR) to defer memory deallocation until no active thread holds a reference.",
+    "tags": [
+      "concurrency",
+      "lock_free",
+      "compare_and_swap",
+      "treiber_stack",
+      "memory_models",
+      "sme_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SME-002",
+    "title": "Distributed Systems: Raft Consensus Algorithm, Log Replication, and Split-Brain Safety",
+    "domain": "coding",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "The Raft consensus protocol manages replicated state machines across distributed nodes under asynchronous network conditions with crash-recovery failures. Key sub-problems: 1. Leader Election: Nodes transition between Follower, Candidate, and Leader using randomized election timeouts. A candidate requires majority votes (⌊N/2⌋ + 1) in a given term. 2. Log Replication: Leader appends client commands to its log and issues AppendEntries RPCs. An entry is committed once replicated across majority nodes. 3. Safety Invariant: Election restriction ensures a candidate cannot win election unless its log is at least as up-to-date as any voter's log (comparing lastLogTerm then lastLogIndex).",
+    "example_problem": "Design a complete State Machine Replication validator for Raft log entry consistency and majority commitment check in Python.",
+    "solution_steps": "```python\nfrom dataclasses import dataclass, field\nfrom typing import List, Dict, Optional\n\n@dataclass\nclass LogEntry:\n    term: int\n    index: int\n    command: str\n\nclass RaftClusterValidator:\n    def __init__(self, node_count: int):\n        self.n = node_count\n        self.majority = (node_count // 2) + 1\n        self.node_logs: Dict[int, List[LogEntry]] = {i: [] for i in range(node_count)}\n        self.commit_index = 0\n\n    def append_leader_entry(self, leader_id: int, term: int, command: str) -> LogEntry:\n        idx = len(self.node_logs[leader_id]) + 1\n        entry = LogEntry(term=term, index=idx, command=command)\n        self.node_logs[leader_id].append(entry)\n        return entry\n\n    def replicate_to_follower(self, follower_id: int, entry: LogEntry, prev_term: int, prev_idx: int) -> bool:\n        f_log = self.node_logs[follower_id]\n        # Log matching property check\n        if prev_idx > 0:\n            if len(f_log) < prev_idx or f_log[prev_idx - 1].term != prev_term:\n                return False  # Inconsistency detected\n        # Overwrite conflicting entries and append\n        del f_log[prev_idx:]\n        f_log.append(entry)\n        return True\n\n    def check_majority_committed(self, entry_index: int, entry_term: int) -> bool:\n        replicated_count = 0\n        for f_id, log in self.node_logs.items():\n            if len(log) >= entry_index and log[entry_index - 1].term == entry_term:\n                replicated_count += 1\n        return replicated_count >= self.majority\n```",
+    "tags": [
+      "distributed_systems",
+      "raft",
+      "consensus",
+      "state_machine_replication",
+      "sme_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-ELEM-004",
+    "title": "Decimal Place Value, Decimals on Number Line, and Operations",
+    "domain": "maths",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "In base-10 decimals, each position to the right of the decimal point represents a power of 1/10 (tenths = 10⁻¹, hundredths = 10⁻², thousandths = 10⁻³). When adding or subtracting decimals, align decimal points vertically so that like place values are combined.",
+    "example_problem": "A scientific beaker weighs 14.35 grams empty. After adding a liquid chemical sample, the total weight is 31.025 grams. What is the exact weight of the chemical liquid in grams?",
+    "solution_steps": "1. Align decimal points vertically:\n     31.025\n   - 14.350\n2. Subtract place by place from right to left:\n   Thousandths: 5 - 0 = 5.\n   Hundredths: 2 - 5 requires regrouping from tenths. 12 - 5 = 7.\n   Tenths: (0 regrouped) 9 - 3 = 6 (after regrouping from units).\n   Units: (1 regrouped) 10 - 4 = 6 (after regrouping from tens).\n   Tens: 2 - 1 = 1.\n3. Result: 16.675 grams.\n4. Verification: 14.350 + 16.675 = 31.025 g.\nThe liquid sample weighs exactly 16.675 grams.",
+    "tags": [
+      "decimals",
+      "place_value",
+      "subtraction",
+      "elementary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-ELEM-005",
+    "title": "Factors, Multiples, Prime Numbers, and Greatest Common Divisor (GCD)",
+    "domain": "maths",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "A factor divides an integer evenly with remainder 0. A prime number has exactly two distinct positive divisors: 1 and itself (2 is the smallest and only even prime). Greatest Common Divisor (GCD) is the largest integer dividing two numbers. Least Common Multiple (LCM) is the smallest positive integer divisible by both. For any two positive integers a and b: GCD(a, b) * LCM(a, b) = a * b.",
+    "example_problem": "Find the prime factorizations, GCD, and LCM of 36 and 48.",
+    "solution_steps": "1. Prime factorization of 36: 36 = 2² * 3².\n2. Prime factorization of 48: 48 = 2⁴ * 3¹.\n3. Greatest Common Divisor (minimum power of shared prime factors):\n   GCD(36, 48) = 2^(min(2,4)) * 3^(min(2,1)) = 2² * 3¹ = 4 * 3 = 12.\n4. Least Common Multiple (maximum power of all prime factors):\n   LCM(36, 48) = 2^(max(2,4)) * 3^(max(2,1)) = 2⁴ * 3² = 16 * 9 = 144.\n5. Verify identity: GCD * LCM = 12 * 144 = 1728; a * b = 36 * 48 = 1728.\nGCD is 12 and LCM is 144.",
+    "tags": [
+      "factors",
+      "prime_factorization",
+      "gcd",
+      "lcm",
+      "elementary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-ELEM-004",
+    "title": "Sound and Vibration: Pitch, Loudness, and Propagation in Media",
+    "domain": "physics",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Sound is a mechanical longitudinal wave produced by vibrating matter. It requires a material medium (solid, liquid, or gas) and cannot travel through a vacuum. Pitch depends on frequency (vibrations per second, measured in Hertz, Hz). Loudness depends on amplitude of vibration. Sound travels fastest in solids, slower in liquids, and slowest in gases (air ~343 m/s at 20°C) due to molecular density and elasticity.",
+    "example_problem": "During a thunderstorm, Sarah sees a flash of lightning and hears the thunderclap 4.0 seconds later. If the speed of sound in air is 340 m/s, how far away was the lightning strike in meters and kilometers?",
+    "solution_steps": "1. Light travels at c ≈ 3 * 10⁸ m/s, so the flash arrives virtually instantaneously (time < 1 microsecond).\n2. Time delay Δt = 4.0 seconds represents sound transit time.\n3. Distance d = Speed * Time = 340 m/s * 4.0 s = 1360 meters.\n4. Convert to kilometers: 1360 m / 1000 = 1.36 km.\nThe lightning strike occurred 1,360 meters (1.36 km) away.",
+    "tags": [
+      "sound",
+      "waves",
+      "vibration",
+      "speed_of_sound",
+      "elementary_science"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-ELEM-005",
+    "title": "Magnetism: Poles, Magnetic Fields, and Compass Navigation",
+    "domain": "physics",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Every magnet has two poles: North (N) and South (S). Fundamental Law of Magnetism: Like poles repel (N-N or S-S) and opposite poles attract (N-S). Magnetic field lines emerge from the North pole and curve into the South pole externally. Earth acts as a giant magnetic dipole; a freely suspended magnetic compass needle aligns along Earth's geomagnetic field lines.",
+    "example_problem": "Explain why a compass needle points toward Earth's geographic North Pole, and determine what happens when you cut a bar magnet in half.",
+    "solution_steps": "1. Earth's geographic North Pole is close to Earth's magnetic SOUTH pole. Because opposite magnetic poles attract, the North-seeking pole of the compass needle is pulled toward Earth's magnetic south (geographic north).\n2. When a bar magnet is cut in half, magnetic dipoles within atomic domains remain aligned. Isolated magnetic monopoles do not exist in classical electromagnetism.\n3. Conclusion: Cutting a bar magnet produces two smaller, complete magnets, each with its own independent North and South pole.",
+    "tags": [
+      "magnetism",
+      "magnetic_poles",
+      "compass",
+      "earth_magnetic_field",
+      "elementary_science"
+    ]
+  },
+  {
+    "id": "STEM-CODE-ELEM-002",
+    "title": "String Processing, Zero-Based Indexing, and Slicing in Python",
+    "domain": "coding",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "In computer science, strings are sequences of characters. Most modern languages use zero-based indexing where the first element is index 0 and the last is len(s) - 1. Python slicing syntax s[start:stop:step] extracts substrings non-destructively up to but not including the stop index.",
+    "example_problem": "Write a Python function that checks whether a given string is a palindrome (reads identically forwards and backwards), ignoring case and whitespace.",
+    "solution_steps": "```python\ndef is_palindrome(text: str) -> bool:\n    # Clean string: lowercase and remove spaces\n    cleaned = ''.join(ch.lower() for ch in text if ch.isalnum())\n    # Compare string with its reverse slice [::-1]\n    return cleaned == cleaned[::-1]\n\n# Test cases\nprint(is_palindrome('Racecar'))       # True\nprint(is_palindrome('A man a plan a canal Panama')) # True\nprint(is_palindrome('Python'))        # False\n```\nExplanation:\n1. Filter alphanumeric characters to ignore punctuation and spaces.\n2. Slice `[::-1]` traverses the string in reverse with step -1.\n3. Check equality between original cleaned string and reversed string.",
+    "tags": [
+      "strings",
+      "indexing",
+      "slicing",
+      "palindrome",
+      "python",
+      "elementary_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-ELEM-003",
+    "title": "Arithmetic Operators, Precedence (PEMDAS), and Integer Division",
+    "domain": "coding",
+    "tier": "elementary",
+    "grade_level": "Class 4-5",
+    "concept": "Programming languages evaluate mathematical expressions according to operator precedence (PEMDAS: Parentheses, Exponentiation **, Multiplication/Division * / // %, Addition/Subtraction + -). Floor division `//` discards decimal fractions and rounds down towards negative infinity; modulo `%` yields the division remainder.",
+    "example_problem": "Write a Python function that takes a total number of seconds (e.g. 3665) and converts it into hours, minutes, and remaining seconds.",
+    "solution_steps": "```python\ndef convert_seconds(total_seconds: int) -> dict:\n    hours = total_seconds // 3600\n    remaining_after_hours = total_seconds % 3600\n    minutes = remaining_after_hours // 60\n    seconds = remaining_after_hours % 60\n    return {'hours': hours, 'minutes': minutes, 'seconds': seconds}\n\nres = convert_seconds(3665)\nprint(f\"{res['hours']}h {res['minutes']}m {res['seconds']}s\")\n# Output: 1h 1m 5s\n```\nExplanation:\n1. 1 hour = 3600 seconds. `3665 // 3600 = 1` hour.\n2. Modulo `3665 % 3600 = 65` seconds remaining.\n3. 1 minute = 60 seconds. `65 // 60 = 1` minute.\n4. Modulo `65 % 60 = 5` seconds remaining.",
+    "tags": [
+      "operators",
+      "floor_division",
+      "modulo",
+      "pemdas",
+      "elementary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SEC-004",
+    "title": "Systems of Linear Equations: Substitution, Elimination, and Cramer's Rule",
+    "domain": "maths",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "A system of two linear equations in two variables: a1*x + b1*y = c1 and a2*x + b2*y = c2. Solvable uniquely if the coefficient determinant D = (a1*b2 - a2*b1) ≠ 0. By Cramer's Rule: x = Dx / D and y = Dy / D, where Dx = (c1*b2 - c2*b1) and Dy = (a1*c2 - a2*c1).",
+    "example_problem": "Solve the system 3x + 2y = 16 and 5x - 4y = 8 using elimination and verify via Cramer's Rule.",
+    "solution_steps": "1. Method of Elimination: Multiply the first equation by 2 to align y coefficients:\n   2*(3x + 2y) = 2*(16) => 6x + 4y = 32.\n2. Add to second equation (5x - 4y = 8):\n   (6x + 4y) + (5x - 4y) = 32 + 8\n   11x = 40 => wait, 32 + 8 = 40 => x = 40/11.\n3. Let us verify with Cramer's Rule determinants:\n   D = (3)(-4) - (5)(2) = -12 - 10 = -22.\n   Dx = (16)(-4) - (8)(2) = -64 - 16 = -80 => x = -80 / -22 = 40/11.\n   Dy = (3)(8) - (5)(16) = 24 - 80 = -56 => y = -56 / -22 = 28/11.\n4. Verify in eq 1: 3(40/11) + 2(28/11) = 120/11 + 56/11 = 176/11 = 16.\nUnique solution is x = 40/11 (≈ 3.636) and y = 28/11 (≈ 2.545).",
+    "tags": [
+      "linear_algebra",
+      "cramers_rule",
+      "elimination",
+      "determinants",
+      "secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SEC-005",
+    "title": "Probability and Statistics: Mean, Median, Variance, and Independent Events",
+    "domain": "maths",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Mean x̄ = (∑ x_i) / n. Median is the middle value of sorted data. Variance s² = ∑ (x_i - x̄)² / (n - 1). Standard deviation s = √(s²). For two independent events A and B: P(A ∩ B) = P(A) * P(B). General Addition Rule: P(A ∪ B) = P(A) + P(B) - P(A ∩ B).",
+    "example_problem": "A standard fair six-sided die is rolled twice. Find the probability that the sum of the two rolls is at least 9, given that the first roll is an odd number.",
+    "solution_steps": "1. Sample space has 6 * 6 = 36 equally likely outcomes.\n2. Condition E: First roll is odd: outcomes start with 1, 3, or 5 (18 possible outcomes).\n3. Target event A: Sum >= 9.\n   - If first roll is 1: max sum is 1 + 6 = 7 (no outcomes >= 9).\n   - If first roll is 3: sum >= 9 requires second roll 6 (1 outcome: (3,6)).\n   - If first roll is 5: sum >= 9 requires second roll 4, 5, or 6 (3 outcomes: (5,4), (5,5), (5,6)).\n4. Total favorable outcomes in conditioned space = 1 + 3 = 4 outcomes.\n5. Conditional probability P(Sum >= 9 | First is Odd) = 4 / 18 = 2/9 ≈ 0.222 (22.2%).",
+    "tags": [
+      "probability",
+      "conditional_probability",
+      "statistics",
+      "secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SEC-004",
+    "title": "Newton's Law of Universal Gravitation and Planetary Orbits",
+    "domain": "physics",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Universal Gravitation states every point mass attracts every other point mass with force F = G * m1 * m2 / r², where G ≈ 6.674 * 10⁻¹¹ N·m²/kg². Acceleration due to gravity at surface of spherical planet of mass M and radius R: g = G * M / R². Circular orbital speed: v_orbit = √(G * M / r). Escape velocity: v_esc = √(2 * G * M / R).",
+    "example_problem": "Calculate the orbital speed and period of a satellite orbiting Earth at an altitude h = 600 km above sea level (Earth mass M = 5.972 * 10²⁴ kg, Earth radius R = 6.371 * 10⁶ m, G = 6.674 * 10⁻¹¹ N·m²/kg²).",
+    "solution_steps": "1. Orbital radius r = R + h = 6.371 * 10⁶ m + 0.600 * 10⁶ m = 6.971 * 10⁶ meters.\n2. Orbital speed: v = √(G * M / r) = √((6.674 * 10⁻¹¹ * 5.972 * 10²⁴) / (6.971 * 10⁶))\n   = √(3.9857 * 10¹⁴ / 6.971 * 10⁶) = √(5.7175 * 10⁷) ≈ 7561 m/s (7.56 km/s).\n3. Orbital period T = 2 * π * r / v = 2 * π * 6.971 * 10⁶ / 7561 ≈ 43,800 / 7.561 ≈ 5792 seconds.\n4. Convert period to minutes: 5792 s / 60 ≈ 96.5 minutes.\nOrbital velocity is 7.56 km/s and orbital period is 96.5 minutes.",
+    "tags": [
+      "gravitation",
+      "orbits",
+      "escape_velocity",
+      "satellites",
+      "secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SEC-005",
+    "title": "Geometric Optics: Snell's Law of Refraction and Total Internal Reflection",
+    "domain": "physics",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "Refraction is the bending of light at the boundary between two optical media of different refractive indices. Snell's Law: n1 * sin(θ1) = n2 * sin(θ2). When light travels from a denser medium (n1) into a rarer medium (n2 < n1), the refracted ray bends away from the normal. When the angle of incidence exceeds the critical angle θc = arcsin(n2 / n1), 100% of the light is reflected internally (Total Internal Reflection, the principle of fiber optics).",
+    "example_problem": "A light ray travels inside a crown glass block (refractive index n1 = 1.52) towards an air interface (n2 = 1.00). Calculate the critical angle θc and find the angle of refraction if the angle of incidence is 30.0°.",
+    "solution_steps": "1. Critical angle formula: sin(θc) = n2 / n1 = 1.00 / 1.52 ≈ 0.6579.\n2. θc = arcsin(0.6579) ≈ 41.14°.\n3. For incidence angle θ1 = 30.0° < θc, refraction occurs into air.\n4. Apply Snell's Law: n1 * sin(θ1) = n2 * sin(θ2)\n   1.52 * sin(30°) = 1.00 * sin(θ2)\n   1.52 * 0.5 = sin(θ2) => sin(θ2) = 0.7600.\n5. Angle of refraction θ2 = arcsin(0.7600) ≈ 49.46°.\nCritical angle is 41.14° and angle of refraction into air is 49.46°.",
+    "tags": [
+      "optics",
+      "refraction",
+      "snells_law",
+      "total_internal_reflection",
+      "secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SEC-002",
+    "title": "Linear Data Structures: Stacks (LIFO), Queues (FIFO), and Parenthesis Validation",
+    "domain": "coding",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "A Stack operates under Last-In First-Out (LIFO) semantics with O(1) push and pop. A Queue operates under First-In First-Out (FIFO) semantics with O(1) enqueue and dequeue (implemented via collections.deque). Fundamental application: matching opening and closing delimiters via stack.",
+    "example_problem": "Implement a Python function using a stack to validate whether a string containing brackets '()[]{}' has balanced matching pairs in correct nesting order.",
+    "solution_steps": "```python\ndef is_valid_parentheses(s: str) -> bool:\n    bracket_map = {')': '(', ']': '[', '}': '{'}\n    stack = []\n    for char in s:\n        if char in '([{':\n            stack.append(char)\n        elif char in bracket_map:\n            if not stack or stack.pop() != bracket_map[char]:\n                return False\n    return len(stack) == 0\n\n# Test cases\nprint(is_valid_parentheses('({[]})'))  # True\nprint(is_valid_parentheses('([)]'))    # False\nprint(is_valid_parentheses('(((' ))     # False\n```\nComplexity: O(N) time and O(N) auxiliary space.",
+    "tags": [
+      "data_structures",
+      "stack",
+      "queue",
+      "parentheses_validation",
+      "secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SEC-003",
+    "title": "Hash Tables, O(1) Lookups, and the Two-Sum Algorithm",
+    "domain": "coding",
+    "tier": "secondary",
+    "grade_level": "Class 6-10",
+    "concept": "A Hash Table maps keys to values using a deterministic hash function, providing O(1) average time complexity for insertions, lookups, and deletions. Transforming an O(n²) nested loop problem into an O(n) hash table lookup is the quintessential optimization technique in algorithm engineering.",
+    "example_problem": "Given an array of integers `nums` and an integer `target`, return the 0-based indices of the two numbers such that they add up to `target` in O(n) time.",
+    "solution_steps": "```python\nfrom typing import List, Optional\n\ndef two_sum(nums: List[int], target: int) -> Optional[List[int]]:\n    seen = {}  # maps value to index\n    for idx, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], idx]\n        seen[num] = idx\n    return None\n\n# Example\nnums = [2, 7, 11, 15]\ntarget = 9\nprint(two_sum(nums, target))  # Output: [0, 1]\n```\nExplanation:\nIterate through the array once. For each element, look up if `target - num` already exists in `seen`. If so, return pair. If not, record `seen[num] = idx`. Runs in O(N) time and O(N) space.",
+    "tags": [
+      "algorithms",
+      "hash_table",
+      "two_sum",
+      "time_complexity",
+      "secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-HS-003",
+    "title": "Vector Geometry in 3D: Dot Product, Cross Product, and Equation of a Plane",
+    "domain": "maths",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Dot product: a · b = |a||b| cos(θ) = a_x*b_x + a_y*b_y + a_z*b_z (scalar; zero iff vectors are orthogonal). Cross product: a x b = |a||b| sin(θ) n̂ (vector perpendicular to both a and b, magnitude equals parallelogram area). The equation of a plane through point P0(x0, y0, z0) with normal vector n = (A, B, C) is: A(x - x0) + B(y - y0) + C(z - z0) = 0.",
+    "example_problem": "Find a unit normal vector and Cartesian equation of the plane passing through points P(1, 0, 2), Q(2, 3, 1), and R(0, 2, 4).",
+    "solution_steps": "1. Construct displacement vectors from P:\n   u = PQ = (2-1, 3-0, 1-2) = (1, 3, -1)\n   v = PR = (0-1, 2-0, 4-2) = (-1, 2, 2).\n2. Compute normal vector via cross product n = u x v:\n   n = i * ((3)(2) - (-1)(2)) - j * ((1)(2) - (-1)(-1)) + k * ((1)(2) - (3)(-1))\n   = i * (6 + 2) - j * (2 - 1) + k * (2 + 3) = (8, -1, 5).\n3. Compute magnitude: |n| = √(8² + (-1)² + 5²) = √(64 + 1 + 25) = √90 = 3√10.\n   Unit normal n̂ = (8/(3√10), -1/(3√10), 5/(3√10)).\n4. Plane equation using point P(1, 0, 2):\n   8(x - 1) - 1(y - 0) + 5(z - 2) = 0\n   8x - 8 - y + 5z - 10 = 0 => 8x - y + 5z = 18.\nCartesian equation is 8x - y + 5z = 18.",
+    "tags": [
+      "vectors",
+      "cross_product",
+      "dot_product",
+      "3d_geometry",
+      "planes",
+      "higher_secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-HS-004",
+    "title": "Matrix Inversion, Characteristic Polynomial, and Eigenvalues",
+    "domain": "maths",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "For square matrix A, an eigenvalue λ and non-zero eigenvector v satisfy A*v = λ*v, meaning (A - λ*I)*v = 0. Non-trivial solutions exist iff characteristic polynomial det(A - λ*I) = 0. Trace equals sum of eigenvalues: Tr(A) = ∑ λ_i. Determinant equals product of eigenvalues: det(A) = ∏ λ_i. A 2x2 matrix inverse is A⁻¹ = (1 / det(A)) * [[d, -b], [-c, a]].",
+    "example_problem": "Find the eigenvalues and corresponding eigenvectors of the 2x2 matrix A = [[4, 2], [1, 3]].",
+    "solution_steps": "1. Formulate characteristic equation det(A - λ*I) = 0:\n   det([[4-λ, 2], [1, 3-λ]]) = (4 - λ)(3 - λ) - (2)(1) = λ² - 7λ + 12 - 2 = λ² - 7λ + 10 = 0.\n2. Factor quadratic: (λ - 5)(λ - 2) = 0 => Eigenvalues λ1 = 5, λ2 = 2.\n3. Eigenvector for λ1 = 5:\n   (A - 5I)v = [[-1, 2], [1, -2]] [[x], [y]] = [[0], [0]] => -x + 2y = 0 => x = 2y.\n   Normalized eigenvector v1 = (1/√5) * [2, 1]^T.\n4. Eigenvector for λ2 = 2:\n   (A - 2I)v = [[2, 2], [1, 1]] [[x], [y]] = [[0], [0]] => x + y = 0 => x = -y.\n   Normalized eigenvector v2 = (1/√2) * [1, -1]^T.\nEigenvalues are 5 and 2 with eigenvectors [2, 1]^T and [1, -1]^T.",
+    "tags": [
+      "matrices",
+      "eigenvalues",
+      "eigenvectors",
+      "determinants",
+      "higher_secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-HS-005",
+    "title": "Complex Numbers: Polar Form, Euler's Formula, and De Moivre's Theorem",
+    "domain": "maths",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "A complex number z = x + i*y has modulus r = √(x² + y²) and argument θ = atan2(y, x). Euler's formula: e^(iθ) = cos(θ) + i*sin(θ). Polar representation: z = r * e^(iθ). De Moivre's Theorem states: for any integer n: [r(cos θ + i sin θ)]ⁿ = rⁿ (cos(nθ) + i sin(nθ)). The n-th roots of unity are given by e^(i 2πk / n) for k = 0, 1, ..., n-1.",
+    "example_problem": "Compute (1 + i√3)⁶ in rectangular form using De Moivre's Theorem.",
+    "solution_steps": "1. Identify x = 1, y = √3.\n2. Modulus r = √(1² + (√3)²) = √(1 + 3) = √4 = 2.\n3. Argument θ = arctan(√3 / 1) = π/3 (60°).\n4. Polar form: z = 2 * e^(i π/3).\n5. Apply De Moivre's Theorem for n = 6:\n   z⁶ = 2⁶ * e^(i * 6 * π/3) = 64 * e^(i 2π) = 64 * (cos(2π) + i sin(2π)).\n6. Since cos(2π) = 1 and sin(2π) = 0:\n   z⁶ = 64 * (1 + 0i) = 64.\nThe exact result is the real integer 64.",
+    "tags": [
+      "complex_numbers",
+      "eulers_formula",
+      "de_moivre",
+      "polar_form",
+      "higher_secondary_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-HS-003",
+    "title": "Simple Harmonic Motion: Differential Equation, Energy, and Damping",
+    "domain": "physics",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Simple Harmonic Motion (SHM) occurs when the restoring force is proportional to displacement: F = -k*x. Differential equation: d²x/dt² + ω₀² x = 0, where natural angular frequency ω₀ = √(k/m). Position: x(t) = A cos(ω₀ t + φ). Velocity v(t) = -A ω₀ sin(ω₀ t + φ). Total mechanical energy is constant: E_total = 0.5 * k * A² = 0.5 * m * v_max².",
+    "example_problem": "A 0.25 kg block connected to a light horizontal spring of spring constant k = 100 N/m is displaced 0.08 m from equilibrium and released from rest. Find the period T, maximum velocity v_max, and total mechanical energy of the oscillator.",
+    "solution_steps": "1. Angular frequency: ω₀ = √(k / m) = √(100 / 0.25) = √400 = 20 rad/s.\n2. Period T = 2π / ω₀ = 2π / 20 = π / 10 ≈ 0.314 seconds.\n3. Maximum velocity v_max = A * ω₀ = 0.08 m * 20 rad/s = 1.6 m/s.\n4. Total mechanical energy E = 0.5 * k * A² = 0.5 * 100 * (0.08)² = 50 * 0.0064 = 0.32 Joules.\nOscillation period is 0.314 s, max velocity is 1.6 m/s, and total energy is 0.32 J.",
+    "tags": [
+      "harmonic_oscillator",
+      "shm",
+      "spring_mass",
+      "frequency",
+      "higher_secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-HS-004",
+    "title": "Electromagnetic Induction: Faraday's Law, Lenz's Law, and Self-Inductance",
+    "domain": "physics",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Magnetic flux Φ_B = ∫ B · dA = B * A * cos(θ). Faraday's Law: Induced electromotive force (EMF) is proportional to the time rate of change of magnetic flux: EMF = - N * (dΦ_B / dt). Lenz's Law (minus sign) dictates that induced current flows in a direction whose magnetic field opposes the change in flux causing it. Self-induced EMF in an inductor: EMF_L = - L * (dI / dt). Energy stored in magnetic field: U_B = 0.5 * L * I².",
+    "example_problem": "A circular wire coil with 200 turns and radius 0.05 m is oriented perpendicular to a uniform magnetic field. The magnetic field increases linearly from 0.10 T to 0.70 T in 0.30 seconds. Calculate the magnitude of the induced EMF in the coil.",
+    "solution_steps": "1. Area of coil A = π * r² = π * (0.05)² = 0.0025 π m² ≈ 0.007854 m².\n2. Initial flux per turn: Φ_i = B_i * A = 0.10 * 0.007854 ≈ 0.0007854 Wb.\n3. Final flux per turn: Φ_f = B_f * A = 0.70 * 0.007854 ≈ 0.0054978 Wb.\n4. Rate of change of flux: dΦ_B / dt = (Φ_f - Φ_i) / Δt = (0.60 * 0.007854) / 0.30 = 2 * 0.007854 = 0.015708 Wb/s.\n5. Apply Faraday's Law: |EMF| = N * (dΦ_B / dt) = 200 * 0.015708 = 3.1416 Volts (π Volts).\nThe magnitude of the induced EMF is approximately 3.14 Volts.",
+    "tags": [
+      "electromagnetism",
+      "faradays_law",
+      "lenzs_law",
+      "induction",
+      "magnetic_flux",
+      "higher_secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-HS-005",
+    "title": "Quantum Duality: Photoelectric Effect, Work Function, and de Broglie Wavelength",
+    "domain": "physics",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Einstein's Photoelectric Equation: Energy of incident photon E = h * ν = h * c / λ. Maximum kinetic energy of emitted photoelectrons: K_max = h * ν - Φ, where Φ is the metal's work function. Below threshold frequency ν₀ = Φ / h, no electrons are emitted regardless of light intensity. de Broglie hypothesis: Every moving particle exhibits wave characteristics with wavelength λ = h / p = h / (m * v).",
+    "example_problem": "Ultraviolet light of wavelength λ = 250 nm illuminates a potassium metal surface with work function Φ = 2.20 eV. Calculate the photon energy in eV, maximum kinetic energy of emitted photoelectrons, and de Broglie wavelength of an electron emitted at maximum speed (h = 6.626*10⁻³⁴ J·s, 1 eV = 1.602*10⁻¹⁹ J, m_e = 9.109*10⁻³¹ kg).",
+    "solution_steps": "1. Photon energy: E = (h * c) / λ = (6.626 * 10⁻³⁴ * 3.0 * 10⁸) / (250 * 10⁻⁹) = 1.9878 * 10⁻¹⁸ J.\n2. Convert to eV: E = 1.9878 * 10⁻¹⁸ / (1.602 * 10⁻¹⁹) ≈ 4.96 eV.\n3. Maximum kinetic energy: K_max = E - Φ = 4.96 eV - 2.20 eV = 2.76 eV.\n4. Convert K_max to Joules: 2.76 * 1.602 * 10⁻¹⁹ = 4.4215 * 10⁻¹⁹ J.\n5. Electron momentum: p = √(2 * m_e * K_max) = √(2 * 9.109 * 10⁻³¹ * 4.4215 * 10⁻¹⁹) = √(8.057 * 10⁻⁴⁹) ≈ 8.976 * 10⁻²⁵ kg·m/s.\n6. de Broglie wavelength: λ_dB = h / p = (6.626 * 10⁻³⁴) / (8.976 * 10⁻²⁵) ≈ 7.38 * 10⁻¹⁰ m (0.738 nm).\nPhoton energy is 4.96 eV, maximum kinetic energy is 2.76 eV, and de Broglie wavelength is 0.74 nm.",
+    "tags": [
+      "quantum_physics",
+      "photoelectric_effect",
+      "work_function",
+      "de_broglie",
+      "higher_secondary_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-HS-002",
+    "title": "Binary Search Trees (BST): Insertion, Search, Deletion, and In-Order Traversal",
+    "domain": "coding",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "A Binary Search Tree (BST) maintains the invariant: for every node X, all values in X's left subtree are strictly less than X.val, and all values in X's right subtree are strictly greater than X.val. Search, insertion, and deletion operate in O(h) time where h is tree height (O(log n) balanced, O(n) worst-case). In-order traversal visits nodes in sorted non-decreasing order.",
+    "example_problem": "Implement a complete Binary Search Tree class in Python with `insert`, `search`, and `inorder_traversal` methods.",
+    "solution_steps": "```python\nfrom typing import Optional, List\n\nclass TreeNode:\n    def __init__(self, val: int):\n        self.val = val\n        self.left: Optional[TreeNode] = None\n        self.right: Optional[TreeNode] = None\n\nclass BinarySearchTree:\n    def __init__(self):\n        self.root: Optional[TreeNode] = None\n\n    def insert(self, val: int) -> None:\n        if not self.root:\n            self.root = TreeNode(val)\n            return\n        curr = self.root\n        while True:\n            if val < curr.val:\n                if not curr.left:\n                    curr.left = TreeNode(val)\n                    return\n                curr = curr.left\n            else:\n                if not curr.right:\n                    curr.right = TreeNode(val)\n                    return\n                curr = curr.right\n\n    def search(self, val: int) -> bool:\n        curr = self.root\n        while curr:\n            if curr.val == val:\n                return True\n            curr = curr.left if val < curr.val else curr.right\n        return False\n\n    def inorder(self) -> List[int]:\n        res = []\n        def _traverse(node):\n            if node:\n                _traverse(node.left)\n                res.append(node.val)\n                _traverse(node.right)\n        _traverse(self.root)\n        return res\n\nbst = BinarySearchTree()\nfor x in [50, 30, 70, 20, 40, 60, 80]:\n    bst.insert(x)\nprint('In-order sorted:', bst.inorder())  # [20, 30, 40, 50, 60, 70, 80]\nprint('Contains 40:', bst.search(40))    # True\nprint('Contains 99:', bst.search(99))    # False\n```",
+    "tags": [
+      "trees",
+      "bst",
+      "binary_search_tree",
+      "inorder_traversal",
+      "higher_secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-HS-003",
+    "title": "Graph Representations and Traversal: BFS Shortest Path and DFS Cycle Detection",
+    "domain": "coding",
+    "tier": "higher_secondary",
+    "grade_level": "Class 11-12",
+    "concept": "Graphs G = (V, E) can be represented via an Adjacency Matrix (O(V²) memory, O(1) edge check) or an Adjacency List (O(V + E) memory, optimal for sparse graphs). Breadth-First Search (BFS) computes unweighted single-source shortest path distances using a FIFO queue in O(V + E) time. Depth-First Search (DFS) uses recursion or a stack to detect back-edges and find connected components / topological orderings.",
+    "example_problem": "Implement BFS shortest path and DFS cycle detection on an undirected graph in Python.",
+    "solution_steps": "```python\nfrom collections import deque, defaultdict\nfrom typing import Dict, List, Optional\n\nclass Graph:\n    def __init__(self):\n        self.adj = defaultdict(list)\n\n    def add_edge(self, u: int, v: int) -> None:\n        self.adj[u].append(v)\n        self.adj[v].append(u)\n\n    def bfs_shortest_path(self, start: int, target: int) -> Optional[List[int]]:\n        queue = deque([[start]])\n        visited = {start}\n        while queue:\n            path = queue.popleft()\n            node = path[-1]\n            if node == target:\n                return path\n            for neighbor in self.adj[node]:\n                if neighbor not in visited:\n                    visited.add(neighbor)\n                    queue.append(path + [neighbor])\n        return None\n\n    def has_cycle(self) -> bool:\n        visited = set()\n        def _dfs(node: int, parent: int) -> bool:\n            visited.add(node)\n            for neighbor in self.adj[node]:\n                if neighbor not in visited:\n                    if _dfs(neighbor, node):\n                        return True\n                elif neighbor != parent:\n                    return True  # Back-edge detected\n            return False\n\n        for n in list(self.adj.keys()):\n            if n not in visited:\n                if _dfs(n, -1):\n                    return True\n        return False\n```",
+    "tags": [
+      "graphs",
+      "bfs",
+      "dfs",
+      "cycle_detection",
+      "shortest_path",
+      "higher_secondary_coding"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SME-003",
+    "title": "Elementary & Algebraic Number Theory: Fermat's Little Theorem and Chinese Remainder Theorem",
+    "domain": "maths",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Fermat's Little Theorem (FLT): If p is prime and gcd(a, p) = 1, then a^(p-1) ≡ 1 (mod p), implying modular inverse a^(p-2) ≡ a⁻¹ (mod p). Euler's generalization: a^(φ(m)) ≡ 1 (mod m). The Chinese Remainder Theorem (CRT) guarantees that for pairwise coprime moduli m1, m2, ..., mk, the system x ≡ a_i (mod m_i) has a unique solution modulo M = ∏ m_i.",
+    "example_problem": "Compute the remainder when 3^2026 is divided by 100 using Euler's Totient Theorem.",
+    "solution_steps": "1. We need 3^2026 mod 100.\n2. Factor modulus: 100 = 2² * 5².\n3. Compute Euler's totient φ(100) = 100 * (1 - 1/2) * (1 - 1/5) = 100 * (1/2) * (4/5) = 40.\n4. Since gcd(3, 100) = 1, Euler's Theorem applies: 3^40 ≡ 1 (mod 100).\n5. Reduce the exponent modulo 40:\n   2026 = 40 * 50 + 26 => 2026 ≡ 26 (mod 40).\n6. Therefore, 3^2026 ≡ 3^26 (mod 100).\n7. Compute 3^26 mod 100 via repeated squaring:\n   3⁴ = 81 ≡ -19 (mod 100).\n   3⁸ = (-19)² = 361 ≡ 61 (mod 100).\n   3¹⁶ = 61² = 3721 ≡ 21 (mod 100).\n   3²⁴ = 3¹⁶ * 3⁸ ≡ 21 * 61 = 1281 ≡ 81 (mod 100).\n   3²⁶ = 3²⁴ * 3² ≡ 81 * 9 = 729 ≡ 29 (mod 100).\nThe remainder is 29.",
+    "tags": [
+      "number_theory",
+      "eulers_totient",
+      "modular_arithmetic",
+      "fermats_little_theorem",
+      "sme_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SME-004",
+    "title": "Real Analysis: Epsilon-Delta Limit Topology, Compactness, and Bolzano-Weierstrass",
+    "domain": "maths",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Rigorous definition of limit: lim(x->c) f(x) = L iff ∀ ε > 0, ∃ δ > 0 such that 0 < |x - c| < δ implies |f(x) - L| < ε. Bolzano-Weierstrass Theorem: Every bounded sequence in Rⁿ has a convergent subsequence. Heine-Borel Theorem: A subset of Rⁿ is compact iff it is closed and bounded. Extreme Value Theorem: A continuous real-valued function on a compact set attains its maximum and minimum.",
+    "example_problem": "Provide a rigorous epsilon-delta proof that lim(x->2) (3x² - 5x + 2) = 4.",
+    "solution_steps": "1. Let f(x) = 3x² - 5x + 2 and target L = 4. Let ε > 0 be arbitrary.\n2. Analyze the difference |f(x) - L|:\n   |3x² - 5x + 2 - 4| = |3x² - 5x - 2| = |(3x + 1)(x - 2)| = |3x + 1| * |x - 2|.\n3. Bound the factor |3x + 1| by restricting |x - 2| < 1 (so 1 < x < 3):\n   If 1 < x < 3, then 3(1) + 1 < 3x + 1 < 3(3) + 1 => 4 < 3x + 1 < 10.\n   Thus, |3x + 1| < 10 when |x - 2| < 1.\n4. We require |3x + 1| * |x - 2| < 10 * |x - 2| < ε => |x - 2| < ε / 10.\n5. Choose δ = min(1, ε / 10).\n6. Verification: Whenever 0 < |x - 2| < δ:\n   |f(x) - 4| = |3x + 1| * |x - 2| < 10 * (ε / 10) = ε.\nQ.E.D. The limit is proven rigorously.",
+    "tags": [
+      "real_analysis",
+      "epsilon_delta",
+      "limits",
+      "bolzano_weierstrass",
+      "topology",
+      "sme_math"
+    ]
+  },
+  {
+    "id": "STEM-MATH-SME-005",
+    "title": "Olympiad Inequalities: Cauchy-Schwarz Inequality and AM-GM-HM Chain",
+    "domain": "maths",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Cauchy-Schwarz Inequality: For all real sequences (a_i) and (b_i): (∑ a_i b_i)² <= (∑ a_i²) * (∑ b_i²), with equality iff (a_i) and (b_i) are proportional. AM-GM-HM inequality chain for positive reals: Arithmetic Mean >= Geometric Mean >= Harmonic Mean, equality iff all elements are identical. Titu's Lemma (Engel form): ∑ (a_i² / b_i) >= (∑ a_i)² / (∑ b_i).",
+    "example_problem": "For positive real numbers a, b, c such that a + b + c = 1, prove that a²/(b + c) + b²/(c + a) + c²/(a + b) >= 1/2.",
+    "solution_steps": "1. Apply Cauchy-Schwarz in Engel's form (Titu's Lemma):\n   ∑ (x_i² / y_i) >= (∑ x_i)² / (∑ y_i).\n2. Set x1 = a, x2 = b, x3 = c and y1 = b + c, y2 = c + a, y3 = a + b.\n3. Numerator sum: (∑ x_i)² = (a + b + c)² = 1² = 1.\n4. Denominator sum: ∑ y_i = (b + c) + (c + a) + (a + b) = 2(a + b + c) = 2(1) = 2.\n5. Direct application of Titu's Lemma yields:\n   a²/(b + c) + b²/(c + a) + c²/(a + b) >= (a + b + c)² / (2(a + b + c)) = 1 / 2.\n6. Equality holds iff a/(b + c) = b/(c + a) = c/(a + b), which occurs when a = b = c = 1/3.\nProof is complete and rigorous.",
+    "tags": [
+      "inequalities",
+      "cauchy_schwarz",
+      "am_gm",
+      "titus_lemma",
+      "olympiad_math",
+      "sme_math"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SME-003",
+    "title": "Special Relativity: Lorentz Transformation, Minkowski Metric, and Invariant Mass",
+    "domain": "physics",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Postulates of Special Relativity: 1. Laws of physics are invariant in all inertial frames. 2. Speed of light c is constant in vacuum for all observers. Lorentz transformation for boost along x: x' = γ(x - v*t), t' = γ(t - v*x/c²), where Lorentz factor γ = 1 / √(1 - v²/c²). Invariant spacetime interval: ds² = c² dt² - dx² - dy² - dz². Relativistic four-momentum p^μ = (E/c, p) satisfies invariant norm: p^μ p_μ = E²/c² - |p|² = m₀² c² => E² = |p|² c² + m₀² c⁴.",
+    "example_problem": "A neutral pion (rest mass m_π = 135 MeV/c²) moving with speed v = 0.8c decays into two photons. In the pion's rest frame, the photons are emitted back-to-back along the direction of motion. Calculate the laboratory frame energy and frequency of each photon (c = 3.0*10⁸ m/s).",
+    "solution_steps": "1. Lorentz factor: γ = 1 / √(1 - (0.8)²) = 1 / √(1 - 0.64) = 1 / √0.36 = 1 / 0.6 = 5/3 ≈ 1.667.\n2. In rest frame (frame S'), the pion of mass m_π decays into two identical photons moving in opposite directions: E'_1 = E'_2 = m_π c² / 2 = 135 / 2 = 67.5 MeV. Three-momentum p'_1 = +67.5 MeV/c, p'_2 = -67.5 MeV/c.\n3. Transform to laboratory frame S via inverse Lorentz transformation for energy: E = γ (E' + v * p'_x):\n   Photon 1 (forward emitted, p'_x = +E'/c):\n   E1 = γ (E' + (v/c) E') = γ (1 + β) E' = (5/3) * (1 + 0.8) * 67.5 = (5/3) * (1.8) * 67.5 = 3 * 67.5 = 202.5 MeV.\n   Photon 2 (backward emitted, p'_x = -E'/c):\n   E2 = γ (E' - (v/c) E') = γ (1 - β) E' = (5/3) * (1 - 0.8) * 67.5 = (5/3) * (0.2) * 67.5 = (1/3) * 67.5 = 22.5 MeV.\n4. Verification: Total laboratory energy E_total = E1 + E2 = 202.5 + 22.5 = 225.0 MeV = γ * m_π c² = (5/3) * 135 = 225.0 MeV. Energy is strictly conserved.\nThe forward photon has laboratory energy 202.5 MeV; the backward photon has 22.5 MeV.",
+    "tags": [
+      "special_relativity",
+      "lorentz_transformation",
+      "invariant_mass",
+      "four_momentum",
+      "doppler_shift",
+      "sme_physics"
+    ]
+  },
+  {
+    "id": "STEM-PHYS-SME-004",
+    "title": "Classical Electrodynamics: Maxwell's Equations and Electromagnetic Wave Equation",
+    "domain": "physics",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Maxwell's Equations in differential form (SI units): 1. Gauss's Law: ∇ · E = ρ / ε₀. 2. Gauss's Magnetism: ∇ · B = 0. 3. Faraday's Law: ∇ x E = - ∂B/∂t. 4. Ampere-Maxwell Law: ∇ x B = μ₀ J + μ₀ ε₀ ∂E/∂t. In free space (ρ = 0, J = 0), taking curl of Faraday's Law and applying vector identity ∇ x (∇ x E) = ∇(∇ · E) - ∇²E yields the 3D wave equation: ∇²E - (1/c²) ∂²E/∂t² = 0, where propagation speed is c = 1 / √(μ₀ ε₀).",
+    "example_problem": "Derive the wave equation for the electric field in vacuum from Maxwell's Equations and verify the transverse electromagnetic (TEM) condition for plane waves.",
+    "solution_steps": "1. In vacuum, charge density ρ = 0 and current density J = 0:\n   (1) ∇ · E = 0\n   (2) ∇ · B = 0\n   (3) ∇ x E = - ∂B/∂t\n   (4) ∇ x B = μ₀ ε₀ ∂E/∂t.\n2. Take the curl of equation (3):\n   ∇ x (∇ x E) = ∇ x (- ∂B/∂t) = - ∂/∂t (∇ x B).\n3. Substitute Ampere-Maxwell equation (4):\n   ∇ x (∇ x E) = - ∂/∂t (μ₀ ε₀ ∂E/∂t) = - μ₀ ε₀ ∂²E/∂t².\n4. Use vector calculus identity: ∇ x (∇ x E) = ∇(∇ · E) - ∇²E.\n5. Since ∇ · E = 0 in vacuum:\n   - ∇²E = - μ₀ ε₀ ∂²E/∂t² => ∇²E = μ₀ ε₀ ∂²E/∂t².\n6. Defining c = 1 / √(μ₀ ε₀) yields the canonical d'Alembert wave equation:\n   ∇²E - (1/c²) ∂²E/∂t² = 0.\n7. For plane wave E = E₀ exp(i(k · r - ωt)), ∇ · E = i k · E = 0 proves the electric field is strictly orthogonal to propagation vector k (transverse wave).",
+    "tags": [
+      "electrodynamics",
+      "maxwells_equations",
+      "wave_equation",
+      "vector_calculus",
+      "sme_physics"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SME-003",
+    "title": "Advanced Graph Algorithms: Dijkstra's Algorithm with Min-Heap Priority Queue",
+    "domain": "coding",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Dijkstra's Algorithm finds the single-source shortest path in directed or undirected graphs with non-negative edge weights. Utilizing a binary min-heap priority queue achieves optimal O((V + E) log V) time complexity. It relies on the greedy property: at each step, the unvisited vertex with minimal distance tentative is finalized.",
+    "example_problem": "Implement an optimal Dijkstra shortest path algorithm in Python with path reconstruction and cycle resistance.",
+    "solution_steps": "```python\nimport heapq\nfrom typing import Dict, List, Tuple, Optional\n\ndef dijkstra(graph: Dict[int, List[Tuple[int, float]]], start: int, target: int) -> Tuple[float, List[int]]:\n    distances = {node: float('inf') for node in graph}\n    predecessors = {node: None for node in graph}\n    distances[start] = 0.0\n    pq = [(0.0, start)]  # (distance, node)\n\n    while pq:\n        curr_dist, u = heapq.heappop(pq)\n        if curr_dist > distances[u]:\n            continue  # Outdated entry in heap\n        if u == target:\n            break\n\n        for v, weight in graph.get(u, []):\n            if weight < 0:\n                raise ValueError('Negative edge weights not permitted in Dijkstra')\n            new_dist = curr_dist + weight\n            if new_dist < distances.get(v, float('inf')):\n                distances[v] = new_dist\n                predecessors[v] = u\n                heapq.heappush(pq, (new_dist, v))\n\n    if distances[target] == float('inf'):\n        return float('inf'), []\n\n    # Reconstruct path\n    path = []\n    curr = target\n    while curr is not None:\n        path.append(curr)\n        curr = predecessors[curr]\n    return distances[target], path[::-1]\n```\nComplexity: O((V + E) log V) time, O(V) space.",
+    "tags": [
+      "dijkstra",
+      "shortest_path",
+      "priority_queue",
+      "min_heap",
+      "greedy",
+      "sme_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SME-004",
+    "title": "Dynamic Programming with Bitmasking: Traveling Salesperson Problem (TSP)",
+    "domain": "coding",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "Bitmask Dynamic Programming represents subsets of N items as bitvectors within an integer (0 to 2^N - 1). The Held-Karp algorithm solves the NP-hard Traveling Salesperson Problem in O(N² 2^N) time, a massive exponential speedup over brute-force O(N!). Recurrence: dp(mask, u) = min_{v ∉ mask} [cost(u, v) + dp(mask | (1 << v), v)].",
+    "example_problem": "Implement the Held-Karp Bitmask DP in Python to find the minimum cost Hamiltonian cycle visiting N cities.",
+    "solution_steps": "```python\nfrom typing import List\n\ndef tsp_held_karp(dist_matrix: List[List[float]]) -> float:\n    n = len(dist_matrix)\n    memo = {}\n    ALL_VISITED = (1 << n) - 1\n\n    def get_min_cost(mask: int, u: int) -> float:\n        if mask == ALL_VISITED:\n            return dist_matrix[u][0]  # Return to origin city 0\n        if (mask, u) in memo:\n            return memo[(mask, u)]\n\n        min_cost = float('inf')\n        for v in range(n):\n            if not (mask & (1 << v)):\n                cost = dist_matrix[u][v] + get_min_cost(mask | (1 << v), v)\n                if cost < min_cost:\n                    min_cost = cost\n\n        memo[(mask, u)] = min_cost\n        return min_cost\n\n    return get_min_cost(1, 0)  # Start at city 0 with mask 000...001\n```\nComplexity: O(N² 2^N) time and O(N 2^N) space.",
+    "tags": [
+      "dynamic_programming",
+      "bitmasking",
+      "tsp",
+      "held_karp",
+      "np_hard",
+      "sme_coding"
+    ]
+  },
+  {
+    "id": "STEM-CODE-SME-005",
+    "title": "Segment Tree with Lazy Propagation: Range Sum Queries and Range Updates",
+    "domain": "coding",
+    "tier": "sme",
+    "grade_level": "SME / Research",
+    "concept": "A Segment Tree provides O(log n) range queries and point updates. When performing range updates, updating all leaves naively degrades to O(n). Lazy Propagation defers updates to descendant nodes until those nodes are explicitly visited, restoring range update complexity to O(log n).",
+    "example_problem": "Implement a Segment Tree with Lazy Propagation in Python supporting range additions and range sum queries.",
+    "solution_steps": "```python\nfrom typing import List\n\nclass SegmentTreeLazy:\n    def __init__(self, arr: List[int]):\n        self.n = len(arr)\n        self.tree = [0] * (4 * self.n)\n        self.lazy = [0] * (4 * self.n)\n        self._build(arr, 0, 0, self.n - 1)\n\n    def _build(self, arr: List[int], node: int, l: int, r: int):\n        if l == r:\n            self.tree[node] = arr[l]\n            return\n        mid = (l + r) // 2\n        self._build(arr, 2 * node + 1, l, mid)\n        self._build(arr, 2 * node + 2, mid + 1, r)\n        self.tree[node] = self.tree[2 * node + 1] + self.tree[2 * node + 2]\n\n    def _push(self, node: int, l: int, r: int):\n        if self.lazy[node] != 0:\n            val = self.lazy[node]\n            self.tree[node] += val * (r - l + 1)\n            if l != r:\n                self.lazy[2 * node + 1] += val\n                self.lazy[2 * node + 2] += val\n            self.lazy[node] = 0\n\n    def update_range(self, ql: int, qr: int, val: int, node: int = 0, l: int = 0, r: int = -1):\n        if r == -1: r = self.n - 1\n        self._push(node, l, r)\n        if ql > r or qr < l: return\n        if ql <= l and r <= qr:\n            self.lazy[node] += val\n            self._push(node, l, r)\n            return\n        mid = (l + r) // 2\n        self.update_range(ql, qr, val, 2 * node + 1, l, mid)\n        self.update_range(ql, qr, val, 2 * node + 2, mid + 1, r)\n        self.tree[node] = self.tree[2 * node + 1] + self.tree[2 * node + 2]\n\n    def query_range(self, ql: int, qr: int, node: int = 0, l: int = 0, r: int = -1) -> int:\n        if r == -1: r = self.n - 1\n        self._push(node, l, r)\n        if ql > r or qr < l: return 0\n        if ql <= l and r <= qr: return self.tree[node]\n        mid = (l + r) // 2\n        return (self.query_range(ql, qr, 2 * node + 1, l, mid) +\n                self.query_range(ql, qr, 2 * node + 2, mid + 1, r))\n```\nComplexity: O(log N) per query and update.",
+    "tags": [
+      "segment_tree",
+      "lazy_propagation",
+      "range_queries",
+      "advanced_data_structures",
+      "sme_coding"
+    ]
+  }
+]
