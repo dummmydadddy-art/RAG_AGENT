@@ -36,3 +36,10 @@ backend/storage/*.sqlite-journal
 
 .serena/
 
+# Model binary artifacts
+*.gguf
+models/lora_adapters/
+
+# Teamwork transient files
+.agents/teamwork/
+

@@ -1,0 +1,10 @@
+{
+  "scenario_id": "TIER4-SCENARIO-04-RUST",
+  "language": "rust",
+  "name": "Zero-Copy String Tokenizer",
+  "features_exercised": ["F9", "F10"],
+  "problem_statement": "Implement an iterator over string slices (&'a str) splitting on delimiters without heap allocating substrings, with lifetime 'a and Iterator trait implementation.",
+  "source_code": "pub struct ZeroCopyTokenizer<'a> {\n    remainder: &'a str,\n    delimiters: &'a [char],\n}\n\nimpl<'a> ZeroCopyTokenizer<'a> {\n    pub fn new(input: &'a str, delimiters: &'a [char]) -> Self {\n        Self { remainder: input, delimiters }\n    }\n}\n\nimpl<'a> Iterator for ZeroCopyTokenizer<'a> {\n    type Item = &'a str;\n    fn next(&mut self) -> Option<Self::Item> {\n        if self.remainder.is_empty() {\n            return None;\n        }\n        match self.remainder.find(|c: char| self.delimiters.contains(&c)) {\n            Some(idx) => {\n                let token = &self.remainder[..idx];\n                self.remainder = &self.remainder[idx + 1..];\n                Some(token)\n            }\n            None => {\n                let token = self.remainder;\n                self.remainder = \"\";\n                Some(token)\n            }\n        }\n    }\n}\n",
+  "unit_tests": "#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn test_zero_copy_tokens() {\n        let delims = [',', ';'];\n        let text = \"foo,bar;baz\";\n        let mut tok = ZeroCopyTokenizer::new(text, &delims);\n        assert_eq!(tok.next(), Some(\"foo\"));\n        assert_eq!(tok.next(), Some(\"bar\"));\n        assert_eq!(tok.next(), Some(\"baz\"));\n        assert_eq!(tok.next(), None);\n    }\n}\n",
+  "required_idioms": ["&'a str", "impl<'a>", "Iterator", "type Item", "Option<Self::Item>"]
+}

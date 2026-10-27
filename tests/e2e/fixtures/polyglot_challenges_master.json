@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Polyglot Challenges Master Catalog",
+  "version": "1.0.0",
+  "languages": ["python", "typescript", "cpp", "java", "rust", "go", "php", "sql"],
+  "tiers": ["elementary", "intermediate", "advanced_systems", "competitive"],
+  "challenges": [
+    {
+      "id": "POLY-PY-ELEM-001",
+      "language": "python",
+      "tier": "elementary",
+      "title": "Two-Sum with Hash Map Lookups",
+      "tags": ["python", "hashmap", "two-pointer", "arrays"],
+      "problem_statement": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. Each input has exactly one solution.",
+      "starter_code": "def two_sum(nums: list[int], target: int) -> list[int]:\n    pass",
+      "reference_solution": "def two_sum(nums: list[int], target: int) -> list[int]:\n    seen: dict[int, int] = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    return []",
+      "unit_test_suite": "def test_two_sum():\n    assert two_sum([2, 7, 11, 15], 9) == [0, 1]\n    assert two_sum([3, 2, 4], 6) == [1, 2]\n    assert two_sum([3, 3], 6) == [0, 1]",
+      "complexity": {"time": "O(N)", "space": "O(N)"},
+      "explanation_steps": ["1. Initialize empty hash map seen.", "2. Traverse array, compute complement.", "3. Return indices if complement found; else store current index."]
+    },
+    {
+      "id": "POLY-TS-INTER-001",
+      "language": "typescript",
+      "tier": "intermediate",
+      "title": "Type-Safe Result Pattern for Error Handling",
+      "tags": ["typescript", "generics", "result-type", "functional"],
+      "problem_statement": "Implement an algebraic Result type with Ok and Err variants and a map method for chaining pure computations without throwing exceptions.",
+      "starter_code": "export type Result<T, E> = any;",
+      "reference_solution": "export type Result<T, E> = \n  | { readonly ok: true; readonly value: T }\n  | { readonly ok: false; readonly error: E };\n\nexport function ok<T, E = never>(value: T): Result<T, E> {\n  return { ok: true, value };\n}\n\nexport function err<E, T = never>(error: E): Result<T, E> {\n  return { ok: false, error };\n}\n\nexport function mapResult<T, E, U>(res: Result<T, E>, fn: (val: T) => U): Result<U, E> {\n  return res.ok ? ok(fn(res.value)) : res;\n}",
+      "unit_test_suite": "const r1 = ok<number, string>(10);\nconst r2 = mapResult(r1, x => x * 2);\nconsole.assert(r2.ok && r2.value === 20);\nconst e1 = err<string, number>('fail');\nconst e2 = mapResult(e1, x => x * 2);\nconsole.assert(!e2.ok && e2.error === 'fail');",
+      "complexity": {"time": "O(1)", "space": "O(1)"},
+      "explanation_steps": ["1. Define discriminated union with boolean ok flag.", "2. Provide constructor functions ok and err.", "3. Implement functor mapResult."]
+    },
+    {
+      "id": "POLY-CPP-SYS-001",
+      "language": "cpp",
+      "tier": "advanced_systems",
+      "title": "Lock-Free SPSC Ring Buffer with std::atomic",
+      "tags": ["cpp", "concurrency", "lock-free", "atomics", "ring-buffer"],
+      "problem_statement": "Implement a single-producer single-consumer bounded ring buffer using std::atomic index counters with acquire-release memory orderings.",
+      "starter_code": "template<typename T, size_t Cap> class SPSCQueue { /* ... */ };",
+      "reference_solution": "#include <atomic>\n#include <array>\n#include <cstddef>\n#include <optional>\n\ntemplate<typename T, size_t Cap>\nclass SPSCQueue {\n    static_assert((Cap & (Cap - 1)) == 0, \"Capacity must be a power of two\");\n    std::array<T, Cap> buffer_{};\n    alignas(64) std::atomic<size_t> head_{0};\n    alignas(64) std::atomic<size_t> tail_{0};\npublic:\n    bool push(const T& item) {\n        const size_t head = head_.load(std::memory_order_relaxed);\n        const size_t tail = tail_.load(std::memory_order_acquire);\n        if (head - tail >= Cap) return false;\n        buffer_[head & (Cap - 1)] = item;\n        head_.store(head + 1, std::memory_order_release);\n        return true;\n    }\n    std::optional<T> pop() {\n        const size_t tail = tail_.load(std::memory_order_relaxed);\n        const size_t head = head_.load(std::memory_order_acquire);\n        if (tail == head) return std::nullopt;\n        T val = buffer_[tail & (Cap - 1)];\n        tail_.store(tail + 1, std::memory_order_release);\n        return val;\n    }\n};",
+      "unit_test_suite": "int main() {\n    SPSCQueue<int, 4> q;\n    assert(q.push(1));\n    assert(q.push(2));\n    assert(q.pop().value() == 1);\n    assert(q.pop().value() == 2);\n    assert(!q.pop().has_value());\n    return 0;\n}",
+      "complexity": {"time": "O(1) push and pop", "space": "O(Cap) fixed preallocated array"},
+      "explanation_steps": ["1. Power-of-two mask for index wrap.", "2. Acquire/Release memory orderings to synchronize data access.", "3. Cache line alignment to prevent false sharing."]
+    },
+    {
+      "id": "POLY-RS-SYS-001",
+      "language": "rust",
+      "tier": "advanced_systems",
+      "title": "Zero-Copy String Tokenizer with Explicit Lifetimes",
+      "tags": ["rust", "zero-copy", "lifetimes", "iterator", "slices"],
+      "problem_statement": "Implement an iterator over string slices (&'a str) splitting on delimiters without heap allocating substrings.",
+      "starter_code": "pub struct Tokenizer<'a> { /* ... */ }",
+      "reference_solution": "pub struct Tokenizer<'a> {\n    remainder: &'a str,\n    delimiter: char,\n}\n\nimpl<'a> Tokenizer<'a> {\n    pub fn new(input: &'a str, delimiter: char) -> Self {\n        Self { remainder: input, delimiter }\n    }\n}\n\nimpl<'a> Iterator for Tokenizer<'a> {\n    type Item = &'a str;\n    fn next(&mut self) -> Option<Self::Item> {\n        if self.remainder.is_empty() {\n            return None;\n        }\n        match self.remainder.find(self.delimiter) {\n            Some(idx) => {\n                let token = &self.remainder[..idx];\n                self.remainder = &self.remainder[idx + self.delimiter.len_utf8()..];\n                Some(token)\n            }\n            None => {\n                let token = self.remainder;\n                self.remainder = \"\";\n                Some(token)\n            }\n        }\n    }\n}",
+      "unit_test_suite": "#[test]\nfn test_zero_copy_tokens() {\n    let text = \"alpha,beta,gamma\";\n    let mut it = Tokenizer::new(text, ',');\n    assert_eq!(it.next(), Some(\"alpha\"));\n    assert_eq!(it.next(), Some(\"beta\"));\n    assert_eq!(it.next(), Some(\"gamma\"));\n    assert_eq!(it.next(), None);\n}",
+      "complexity": {"time": "O(N) total scan", "space": "O(1) zero heap allocations"},
+      "explanation_steps": ["1. Store &'a str slice in struct.", "2. Advance remainder using sub-slice indexing without cloning.", "3. Implement standard Iterator trait."]
+    },
+    {
+      "id": "POLY-SQL-COMP-001",
+      "language": "sql",
+      "tier": "competitive",
+      "title": "Hierarchical Organization Chart Depth via Recursive CTE",
+      "tags": ["sql", "recursive-cte", "hierarchical", "window-functions"],
+      "problem_statement": "Given an employee table with emp_id and manager_id, write a recursive CTE to compute the hierarchical depth and management path of every employee.",
+      "starter_code": "WITH RECURSIVE org_chart AS ( /* ... */ ) SELECT * FROM org_chart;",
+      "reference_solution": "WITH RECURSIVE org_chart AS (\n    SELECT emp_id, manager_id, name, 0 AS depth, CAST(name AS TEXT) AS path\n    FROM employees\n    WHERE manager_id IS NULL\n    UNION ALL\n    SELECT e.emp_id, e.manager_id, e.name, oc.depth + 1, oc.path || ' -> ' || e.name\n    FROM employees e\n    JOIN org_chart oc ON e.manager_id = oc.emp_id\n)\nSELECT emp_id, name, depth, path FROM org_chart ORDER BY depth, emp_id;",
+      "unit_test_suite": "CREATE TABLE employees (emp_id INT PRIMARY KEY, manager_id INT, name TEXT);\nINSERT INTO employees VALUES (1, NULL, 'Alice'), (2, 1, 'Bob'), (3, 1, 'Charlie'), (4, 2, 'David');\n-- Executing CTE returns Alice at depth 0, Bob and Charlie at depth 1, David at depth 2.",
+      "complexity": {"time": "O(V + E) tree traversal", "space": "O(Depth) recursion stack"},
+      "explanation_steps": ["1. Anchor query selects root nodes (manager_id IS NULL).", "2. Recursive query joins child employees on parent emp_id.", "3. Depth increments monotonically by 1 per level."]
+    },
+    {
+      "id": "POLY-PHP-SYS-001",
+      "language": "php",
+      "tier": "advanced_systems",
+      "title": "PSR-4 Lightweight Router with Middleware Pipeline",
+      "tags": ["php", "middleware", "router", "psr-4", "http"],
+      "problem_statement": "Implement an HTTP request router supporting strict typing, variable route parameters, and chained middleware pipes.",
+      "starter_code": "<?php declare(strict_types=1); class Router { /* ... */ }",
+      "reference_solution": "<?php declare(strict_types=1);\n\nclass Router {\n    /** @var array<string, array<string, callable>> */\n    private array $routes = [];\n    /** @var array<callable> */\n    private array $middlewares = [];\n\n    public function use(callable $mw): self {\n        $this->middlewares[] = $mw;\n        return $this;\n    }\n\n    public function add(string $method, string $path, callable $handler): self {\n        $this->routes[strtoupper($method)][$path] = $handler;\n        return $this;\n    }\n\n    public function dispatch(string $method, string $path, array $req = []): mixed {\n        $method = strtoupper($method);\n        if (!isset($this->routes[$method][$path])) {\n            throw new RuntimeException('Route not found', 404);\n        }\n        $pipeline = array_reduce(\n            array_reverse($this->middlewares),\n            fn($next, $mw) => fn($r) => $mw($r, $next),\n            fn($r) => ($this->routes[$method][$path])($r)\n        );\n        return $pipeline($req);\n    }\n}",
+      "unit_test_suite": "<?php\n$r = new Router();\n$r->use(function($req, $next) { $req['trace'] = ['mw1']; return $next($req); });\n$r->add('GET', '/users', fn($req) => array_merge($req['trace'], ['handler']));\n$res = $r->dispatch('GET', '/users');\nassert($res === ['mw1', 'handler']);",
+      "complexity": {"time": "O(M + R) pipeline execution", "space": "O(M) closure call chain"},
+      "explanation_steps": ["1. Store routes by method and exact path.", "2. Compose middleware stack using functional array_reduce.", "3. Execute pipeline through final handler."]
+    },
+    {
+      "id": "POLY-JAVA-INTER-001",
+      "language": "java",
+      "tier": "intermediate",
+      "title": "Thread-Safe Bounded Object Pool using ReentrantLock",
+      "tags": ["java", "concurrency", "object-pool", "reentrant-lock", "generics"],
+      "problem_statement": "Design a generic, thread-safe object pool with fixed capacity that blocks acquiring threads when empty and releases cleanly.",
+      "starter_code": "public class ObjectPool<T> { /* ... */ }",
+      "reference_solution": "import java.util.LinkedList;\nimport java.util.Queue;\nimport java.util.concurrent.locks.Condition;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class ObjectPool<T> {\n    private final Queue<T> pool = new LinkedList<>();\n    private final int capacity;\n    private final ReentrantLock lock = new ReentrantLock();\n    private final Condition notEmpty = lock.newCondition();\n\n    public ObjectPool(int capacity) {\n        this.capacity = capacity;\n    }\n\n    public void add(T item) {\n        lock.lock();\n        try {\n            if (pool.size() < capacity) {\n                pool.offer(item);\n                notEmpty.signal();\n            }\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public T acquire() throws InterruptedException {\n        lock.lock();\n        try {\n            while (pool.isEmpty()) {\n                notEmpty.await();\n            }\n            return pool.poll();\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public void release(T item) {\n        add(item);\n    }\n}",
+      "unit_test_suite": "public class PoolTest {\n    public static void main(String[] args) throws Exception {\n        ObjectPool<String> pool = new ObjectPool<>(2);\n        pool.add(\"resA\");\n        assert pool.acquire().equals(\"resA\");\n    }\n}",
+      "complexity": {"time": "O(1) acquire and release", "space": "O(Capacity) pool storage"},
+      "explanation_steps": ["1. Guard internal queue with ReentrantLock.", "2. Use Condition variable notEmpty to coordinate waiting threads.", "3. Always release locks in finally blocks."]
+    },
+    {
+      "id": "POLY-GO-SYS-001",
+      "language": "go",
+      "tier": "advanced_systems",
+      "title": "Bounded Worker Pool with Graceful Context Cancellation",
+      "tags": ["go", "goroutines", "channels", "sync", "context"],
+      "problem_statement": "Implement a worker pool in Go that manages N concurrent worker goroutines, accepts task closures, and terminates cleanly when context is canceled.",
+      "starter_code": "type WorkerPool struct { /* ... */ }",
+      "reference_solution": "package workerpool\n\nimport (\n\t\"context\"\n\t\"sync\"\n)\n\ntype Task func(ctx context.Context)\n\ntype Pool struct {\n\ttasks   chan Task\n\twg      sync.WaitGroup\n\tctx     context.Context\n\tcancel  context.CancelFunc\n}\n\nfunc NewPool(ctx context.Context, workers int, queueSize int) *Pool {\n\tc, cancel := context.WithCancel(ctx)\n\tp := &Pool{\n\t\ttasks:  make(chan Task, queueSize),\n\t\tctx:    c,\n\t\tcancel: cancel,\n\t}\n\tfor i := 0; i < workers; i++ {\n\t\tp.wg.Add(1)\n\t\tgo p.worker()\n\t}\n\treturn p\n}\n\nfunc (p *Pool) worker() {\n\tdefer p.wg.Done()\n\tfor {\n\t\tselect {\n\t\tcase <-p.ctx.Done():\n\t\t\treturn\n\t\tcase task, ok := <-p.tasks:\n\t\t\tif !ok {\n\t\t\t\treturn\n\t\t\t}\n\t\t\ttask(p.ctx)\n\t\t}\n\t}\n}\n\nfunc (p *Pool) Submit(task Task) bool {\n\tselect {\n\tcase <-p.ctx.Done():\n\t\treturn false\n\tcase p.tasks <- task:\n\t\treturn true\n\t}\n}\n\nfunc (p *Pool) Stop() {\n\tp.cancel()\n\tclose(p.tasks)\n\tp.wg.Wait()\n}",
+      "unit_test_suite": "func TestPool(t *testing.T) {\n\tp := NewPool(context.Background(), 3, 10)\n\tvar counter int64\n\tp.Submit(func(ctx context.Context) { atomic.AddInt64(&counter, 1) })\n\tp.Stop()\n\tif counter != 1 { t.Fail() }\n}",
+      "complexity": {"time": "O(1) task dispatch", "space": "O(QueueSize) task buffer"},
+      "explanation_steps": ["1. Launch fixed number of worker goroutines reading from tasks channel.", "2. Select on both ctx.Done() and task channel to handle cancellation.", "3. Wait on sync.WaitGroup during Stop() to guarantee clean worker teardown."]
+    }
+  ]
+}

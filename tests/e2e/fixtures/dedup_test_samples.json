@@ -1,0 +1,57 @@
+{
+  "description": "Deterministic test vectors for 3-tier deduplication verification",
+  "exact_duplicate_pair": [
+    {
+      "id": "DEDUP-EXACT-01A",
+      "title": "Binary Search Algorithm",
+      "domain": "coding",
+      "tier": "elementary",
+      "concept": "Binary search algorithm operates on sorted array with O(log n) time complexity.",
+      "code": "def binary_search(arr: list[int], target: int) -> int:\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1"
+    },
+    {
+      "id": "DEDUP-EXACT-01B",
+      "title": "   binary search algorithm  ",
+      "domain": "coding",
+      "tier": "elementary",
+      "concept": "Binary search algorithm operates on sorted array with O(log n) time complexity.  ",
+      "code": "# Different comment\ndef binary_search(arr: list[int], target: int) -> int:\n    # Inner comment\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1"
+    }
+  ],
+  "lexical_duplicate_pair": [
+    {
+      "id": "DEDUP-LEXICAL-02A",
+      "title": "Breadth First Search Graph Traversal",
+      "domain": "coding",
+      "tier": "intermediate",
+      "concept": "Traverse graph levels using a queue data structure visiting neighbors iteratively.",
+      "code": "def bfs(graph, start):\n    visited = set([start])\n    queue = collections.deque([start])\n    while queue:\n        node = queue.popleft()\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)\n    return visited"
+    },
+    {
+      "id": "DEDUP-LEXICAL-02B",
+      "title": "Breadth First Search Graph Traversal Function",
+      "domain": "coding",
+      "tier": "intermediate",
+      "concept": "Traverse graph levels using a double ended queue data structure visiting neighbors iteratively.",
+      "code": "def bfs_traverse(graph, start_node):\n    seen = set([start_node])\n    q = collections.deque([start_node])\n    while q:\n        curr = q.popleft()\n        for nxt in graph[curr]:\n            if nxt not in seen:\n                seen.add(nxt)\n                q.append(nxt)\n    return seen"
+    }
+  ],
+  "semantic_collision_pair": [
+    {
+      "id": "DEDUP-SEMANTIC-03A",
+      "title": "Sieve of Eratosthenes Prime Generation",
+      "domain": "coding",
+      "tier": "intermediate",
+      "concept": "Compute all prime numbers up to N by iteratively marking multiples of prime numbers starting from 2.",
+      "test_count": 2
+    },
+    {
+      "id": "DEDUP-SEMANTIC-03B",
+      "title": "Sieve of Eratosthenes Prime Number Sieve",
+      "domain": "coding",
+      "tier": "intermediate",
+      "concept": "Finding all primes up to n by composite cross off iteratively from square of each prime.",
+      "test_count": 5
+    }
+  ]
+}

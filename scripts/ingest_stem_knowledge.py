@@ -1135,6 +1135,24 @@ def run_stem_ingestion_pipeline(
     return summary
 
 
+# ============================================================================
+# POLYGLOT RE-EXPORTS (FOR SEAMLESS INTERFACE BACKWARD COMPATIBILITY)
+# ============================================================================
+
+try:
+    from scripts.ingest_polyglot import (
+        CURATED_POLYGLOT_CORPUS,
+        PolyglotBronzeStage,
+        PolyglotChallenge,
+        PolyglotGoldStage,
+        PolyglotSilverStage,
+        export_polyglot_instruct_dataset,
+        run_polyglot_ingestion_pipeline,
+    )
+except ImportError:
+    pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest and deduplicate STEM knowledge into RAG vector store.")
     parser.add_argument("--input", type=Path, default=None, help="Path to external JSON file containing STEM records.")
@@ -1144,19 +1162,32 @@ def main() -> None:
     parser.add_argument("--max-chunks", type=int, default=500, help="Max rows for material_chunks to protect PHP RAM.")
     parser.add_argument("--no-ollama", action="store_true", help="Disable Ollama and use deterministic fallback vectors.")
     parser.add_argument("--fuzzy-threshold", type=float, default=0.82, help="Jaccard fuzzy deduplication threshold.")
+    parser.add_argument("--polyglot", action="store_true", help="Run polyglot dataset curation and ingestion instead.")
 
     args = parser.parse_args()
 
-    run_stem_ingestion_pipeline(
-        input_file=args.input,
-        db_path=args.db_path,
-        ollama_url=args.ollama_url,
-        embed_model=args.embed_model,
-        max_material_chunks=args.max_chunks,
-        enable_ollama=not args.no_ollama,
-        fuzzy_threshold=args.fuzzy_threshold,
-    )
+    if args.polyglot:
+        run_polyglot_ingestion_pipeline(
+            input_file=args.input,
+            db_path=args.db_path,
+            ollama_url=args.ollama_url,
+            embed_model=args.embed_model,
+            max_material_chunks=args.max_chunks,
+            enable_ollama=not args.no_ollama,
+            fuzzy_threshold=args.fuzzy_threshold,
+        )
+    else:
+        run_stem_ingestion_pipeline(
+            input_file=args.input,
+            db_path=args.db_path,
+            ollama_url=args.ollama_url,
+            embed_model=args.embed_model,
+            max_material_chunks=args.max_chunks,
+            enable_ollama=not args.no_ollama,
+            fuzzy_threshold=args.fuzzy_threshold,
+        )
 
 
 if __name__ == "__main__":
     main()
+

@@ -1,0 +1,10 @@
+{
+  "description": "Vector payloads and binary packing test vectors for nomic-embed-text 768-d",
+  "dimension": 768,
+  "byte_length": 3072,
+  "prefix": "search_document: ",
+  "php_memory_limit_bytes": 134217728,
+  "php_chunk_cap": 500,
+  "bytes_per_chunk_in_php": 97280,
+  "max_php_vector_memory_bytes": 48640000
+}

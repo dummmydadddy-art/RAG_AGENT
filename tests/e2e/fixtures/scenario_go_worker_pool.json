@@ -1,0 +1,10 @@
+{
+  "scenario_id": "TIER4-SCENARIO-08-GO",
+  "language": "go",
+  "name": "Worker Pool with Graceful Cancellation",
+  "features_exercised": ["F9", "F10"],
+  "problem_statement": "Implement a concurrent worker pool in Go using goroutines, channels, sync.WaitGroup, and context.Context for graceful shutdown and task dispatch.",
+  "source_code": "package pool\n\nimport (\n\t\"context\"\n\t\"sync\"\n)\n\ntype Task func(ctx context.Context)\n\ntype WorkerPool struct {\n\tworkers int\n\ttasks   chan Task\n\twg      sync.WaitGroup\n\tctx     context.Context\n\tcancel  context.CancelFunc\n}\n\nfunc NewWorkerPool(ctx context.Context, workers, queueCap int) *WorkerPool {\n\tc, cancel := context.WithCancel(ctx)\n\tp := &WorkerPool{\n\t\tworkers: workers,\n\t\ttasks:   make(chan Task, queueCap),\n\t\tctx:     c,\n\t\tcancel:  cancel,\n\t}\n\tfor i := 0; i < workers; i++ {\n\t\tp.wg.Add(1)\n\t\tgo p.worker()\n\t}\n\treturn p\n}\n\nfunc (p *WorkerPool) worker() {\n\tdefer p.wg.Done()\n\tfor {\n\t\tselect {\n\t\tcase <-p.ctx.Done():\n\t\t\treturn\n\t\tcase task, ok := <-p.tasks:\n\t\t\tif !ok {\n\t\t\t\treturn\n\t\t\t}\n\t\t\ttask(p.ctx)\n\t\t}\n\t}\n}\n\nfunc (p *WorkerPool) Submit(task Task) bool {\n\tselect {\n\tcase <-p.ctx.Done():\n\t\treturn false\n\tcase p.tasks <- task:\n\t\treturn true\n\t}\n}\n\nfunc (p *WorkerPool) Close() {\n\tp.cancel()\n\tclose(p.tasks)\n\tp.wg.Wait()\n}\n",
+  "unit_tests": "func TestPoolExecution(t *testing.T) {\n\tp := NewWorkerPool(context.Background(), 4, 16)\n\tvar counter int64\n\tfor i := 0; i < 10; i++ {\n\t\tp.Submit(func(ctx context.Context) {\n\t\t\tatomic.AddInt64(&counter, 1)\n\t\t})\n\t}\n\tp.Close()\n\tif atomic.LoadInt64(&counter) != 10 {\n\t\tt.Errorf(\"expected 10 tasks, got %d\", counter)\n\t}\n}\n",
+  "required_idioms": ["context.Context", "sync.WaitGroup", "chan Task", "case <-p.ctx.Done():", "wg.Wait()"]
+}

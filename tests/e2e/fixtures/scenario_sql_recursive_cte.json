@@ -1,0 +1,16 @@
+{
+  "scenario_id": "TIER4-SCENARIO-05-SQL",
+  "language": "sql",
+  "name": "Recursive CTE for Hierarchical Organization Chart",
+  "features_exercised": ["F9", "F10"],
+  "problem_statement": "Write a recursive Common Table Expression (CTE) in SQL to compute hierarchy depth, manager chain path, and direct report counts for each employee in an organization chart.",
+  "source_code": "WITH RECURSIVE org_tree AS (\n    SELECT \n        emp_id, \n        manager_id, \n        name, \n        0 AS depth, \n        CAST(name AS TEXT) AS hierarchy_path\n    FROM employees\n    WHERE manager_id IS NULL\n    UNION ALL\n    SELECT \n        e.emp_id, \n        e.manager_id, \n        e.name, \n        ot.depth + 1, \n        ot.hierarchy_path || ' -> ' || e.name\n    FROM employees e\n    JOIN org_tree ot ON e.manager_id = ot.emp_id\n)\nSELECT emp_id, name, depth, hierarchy_path \nFROM org_tree \nORDER BY depth ASC, emp_id ASC;\n",
+  "unit_tests": "CREATE TABLE employees (\n    emp_id INTEGER PRIMARY KEY,\n    manager_id INTEGER,\n    name TEXT NOT NULL\n);\nINSERT INTO employees (emp_id, manager_id, name) VALUES\n(1, NULL, 'CEO'),\n(2, 1, 'VP Eng'),\n(3, 1, 'VP Product'),\n(4, 2, 'Staff Engineer'),\n(5, 4, 'Senior Engineer');\n",
+  "expected_results": [
+    {"emp_id": 1, "name": "CEO", "depth": 0, "hierarchy_path": "CEO"},
+    {"emp_id": 2, "name": "VP Eng", "depth": 1, "hierarchy_path": "CEO -> VP Eng"},
+    {"emp_id": 3, "name": "VP Product", "depth": 1, "hierarchy_path": "CEO -> VP Product"},
+    {"emp_id": 4, "name": "Staff Engineer", "depth": 2, "hierarchy_path": "CEO -> VP Eng -> Staff Engineer"},
+    {"emp_id": 5, "name": "Senior Engineer", "depth": 3, "hierarchy_path": "CEO -> VP Eng -> Staff Engineer -> Senior Engineer"}
+  ]
+}

@@ -20,10 +20,11 @@ def run_sandboxed_code(
     # Prepend socket disabling code to enforce no network access
     sandboxed_header = (
         "import socket\n"
-        "def _blocked(*args, **kwargs):\n"
-        "    raise PermissionError('Network access is disabled inside the physmath sandbox')\n"
-        "socket.socket = _blocked\n"
-        "socket.create_connection = _blocked\n"
+        "class _BlockedSocket(socket.socket):\n"
+        "    def __init__(self, *args, **kwargs):\n"
+        "        raise PermissionError('Network access is disabled inside the physmath sandbox')\n"
+        "socket.socket = _BlockedSocket\n"
+        "socket.create_connection = lambda *args, **kwargs: (_ for _ in ()).throw(PermissionError('Network access is disabled inside the physmath sandbox'))\n"
     )
 
     full_script = sandboxed_header + script_content

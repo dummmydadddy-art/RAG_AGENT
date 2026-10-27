@@ -1,5 +1,5 @@
-# Modelfile for stem-expert
-FROM ./stem-expert-q4_k_m.gguf
+# Modelfile for stem-coder-expert
+FROM ./stem-coder-expert-q4_k_m.gguf
 
 # Runtime Parameters optimized for low VRAM
 PARAMETER temperature 0.2
@@ -9,5 +9,13 @@ PARAMETER repeat_penalty 1.1
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|im_start|>"
 
-# System Prompt
-SYSTEM """You are an elite STEM Subject Matter Expert in Mathematics, Physics, and Computer Science. You solve questions ranging from Class 4 elementary science and arithmetic to advanced competitive Olympiad and university-level problems with step-by-step rigorous reasoning."""
+# ChatML Template
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>"""
+
+# Polyglot STEM Expert System Prompt
+SYSTEM """You are an elite STEM Subject Matter Expert and polyglot software engineer capable of synthesizing, refactoring, and verifying correct and efficient code across Python, TypeScript, C++, Java, Rust, Go, PHP, and SQL with rigorous step-by-step reasoning, test suites, and algorithmic complexity analysis."""

@@ -9,13 +9,13 @@ double_quantization: true
 stage: sft
 do_train: true
 finetuning_type: lora
-lora_target: all
+lora_target: q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
 lora_rank: 8
 lora_alpha: 16
 lora_dropout: 0.05
 
 # Dataset
-dataset: stem_sft_dataset
+dataset: polyglot_instruct_dataset
 template: qwen
 cutoff_len: 1024
 max_samples: 10000
@@ -23,7 +23,7 @@ overwrite_cache: true
 preprocessing_num_workers: 2
 
 # Output & Checkpoints
-output_dir: D:\RAG-Agent\models\lora_adapters\stem-expert
+output_dir: D:\RAG-Agent\models\lora_adapters\stem-coder-expert
 logging_steps: 10
 save_steps: 100
 plot_loss: true
