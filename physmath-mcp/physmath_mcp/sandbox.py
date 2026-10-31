@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 def run_sandboxed_code(
     script_content: str,
-    timeout_seconds: float = 5.0,
+    timeout_seconds: float = 15.0,
     interpreter_path: str = sys.executable,
 ) -> Dict[str, Any]:
     """
@@ -32,6 +32,7 @@ def run_sandboxed_code(
     try:
         proc = subprocess.run(
             [interpreter_path, "-c", full_script],
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
