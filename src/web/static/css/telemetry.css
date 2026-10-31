@@ -1,0 +1,297 @@
+/* ==========================================================================
+   Live Telemetry Badges, Status Pills, & Inspector Drawer
+   ========================================================================== */
+
+.message-telemetry-bar {
+  margin-top: 14px;
+  padding-left: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.telemetry-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Individual Pill Button */
+.telemetry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background-color: var(--pill-bg);
+  border: 1px solid var(--pill-border);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.telemetry-pill:hover {
+  background-color: var(--pill-hover);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.telemetry-pill.active {
+  background-color: var(--bg-surface-active);
+  color: var(--text-primary);
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 1px var(--accent-teal);
+}
+
+/* Status Indicator Dot */
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pill-dot.green {
+  background-color: var(--accent-success);
+  box-shadow: 0 0 5px var(--accent-success);
+}
+
+.pill-dot.blue {
+  background-color: var(--accent-teal);
+  box-shadow: 0 0 5px var(--accent-teal);
+}
+
+.pill-dot.purple {
+  background-color: var(--accent-purple);
+  box-shadow: 0 0 5px var(--accent-purple);
+}
+
+.pill-dot.red {
+  background-color: var(--accent-danger);
+  box-shadow: 0 0 5px var(--accent-danger);
+}
+
+.pill-dot.amber {
+  background-color: var(--accent-warning);
+  box-shadow: 0 0 5px var(--accent-warning);
+}
+
+.pill-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pill-badge {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Specific Pill Accents */
+.telemetry-pill.pill-physmath {
+  border-color: rgba(0, 188, 212, 0.25);
+  background-color: rgba(0, 188, 212, 0.08);
+}
+.telemetry-pill.pill-physmath:hover {
+  background-color: rgba(0, 188, 212, 0.15);
+}
+
+.telemetry-pill.pill-sandbox {
+  border-color: rgba(16, 185, 129, 0.25);
+  background-color: rgba(16, 185, 129, 0.08);
+}
+.telemetry-pill.pill-sandbox:hover {
+  background-color: rgba(16, 185, 129, 0.15);
+}
+
+.telemetry-pill.pill-sandbox.breached {
+  border-color: rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.telemetry-pill.pill-rag {
+  border-color: rgba(168, 85, 247, 0.25);
+  background-color: rgba(168, 85, 247, 0.08);
+}
+.telemetry-pill.pill-rag:hover {
+  background-color: rgba(168, 85, 247, 0.15);
+}
+
+/* ==========================================================================
+   Expandable Telemetry Inspector Drawer
+   ========================================================================== */
+.telemetry-drawer {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  margin-top: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: drawerSlide 0.2s ease-out;
+}
+
+.telemetry-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-surface-hover);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.telemetry-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+.telemetry-drawer-close:hover {
+  color: var(--text-primary);
+}
+
+.telemetry-drawer-body {
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* PhysMath Details */
+.physmath-check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-primary);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.physmath-label {
+  font-weight: 600;
+  color: var(--accent-teal);
+  font-size: 11.5px;
+}
+
+.physmath-val {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+/* Sandbox Details */
+.sandbox-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.sandbox-metric-box {
+  background: var(--bg-primary);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-title {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.metric-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* RAG Lesson Details */
+.rag-lesson-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lesson-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lesson-id-tag {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent-purple);
+}
+
+.lesson-status-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-success-subtle);
+  color: var(--accent-success);
+  text-transform: uppercase;
+}
+
+.lesson-rule-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.lesson-feedback-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.feedback-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.feedback-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.feedback-btn.active {
+  background: var(--accent-primary-subtle);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+@keyframes drawerSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
