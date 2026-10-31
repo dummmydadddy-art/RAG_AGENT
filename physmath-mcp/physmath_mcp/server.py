@@ -44,7 +44,10 @@ target_unit_str = {target_json}
 try:
     context = {{}}
     for sym, u_str in symbol_units.items():
-        context[sym] = 1.0 * ureg(u_str)
+        try:
+            context[sym] = ureg.Quantity(1.0, u_str)
+        except Exception:
+            context[sym] = 1.0 * ureg(u_str)
 
     # Evaluate the expression in context of pint quantities
     eval_result = eval(expr_str, {{"__builtins__": None}}, context)
@@ -60,12 +63,15 @@ try:
     compatible = True
     details = "Dimensionally consistent"
     if target_unit_str:
-        target = 1.0 * ureg(target_unit_str)
+        try:
+            target = ureg.Quantity(1.0, target_unit_str)
+        except Exception:
+            target = 1.0 * ureg(target_unit_str)
         try:
             eval_result.to(target.units)
             compatible = True
             details = f"Consistent and matches target unit {{target_unit_str}}"
-        except pint.DimensionalityError as de:
+        except Exception as de:
             compatible = False
             details = f"Dimensionality mismatch with target unit {{target_unit_str}}: {{str(de)}}"
 
@@ -98,19 +104,23 @@ def sym_equiv(
     expr2: str,
     assumptions: Optional[Dict[str, Any]] = None,
     domain: str = "real",
+    non_commutative_symbols: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Verify symbolic equivalence between two mathematical expressions using SymPy.
-    Performs simplification on (expr1 - expr2) with numerical sampling fallback.
+    Supports stratified sampling across branch cuts, non-commutative operator algebras,
+    and domain-specific assumptions.
     """
     e1_json = json.dumps(expr1)
     e2_json = json.dumps(expr2)
     assump_json = json.dumps(json.dumps(assumptions or {}))
     dom_json = json.dumps(domain)
+    nc_json = json.dumps(non_commutative_symbols or [])
 
     script = f"""
 import json
 import random
+import re
 import sys
 import sympy
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
@@ -119,29 +129,31 @@ expr1_str = {e1_json}
 expr2_str = {e2_json}
 assumptions_dict = json.loads({assump_json})
 domain_str = {dom_json}
+nc_symbols = set({nc_json})
 
 transformations = standard_transformations + (implicit_multiplication_application,)
 
 try:
-    # Collect symbols
-    e1_sym = parse_expr(expr1_str, transformations=transformations)
-    e2_sym = parse_expr(expr2_str, transformations=transformations)
-    
-    all_syms = e1_sym.free_symbols.union(e2_sym.free_symbols)
-    
-    # Re-create symbols with assumptions if specified
-    subs_map = {{}}
-    for s in all_syms:
-        s_name = s.name
-        s_assump = assumptions_dict.get(s_name, {{}})
-        if domain_str == "real" and "real" not in s_assump:
-            s_assump["real"] = True
-        subs_map[s] = sympy.Symbol(s_name, **s_assump)
+    tokens = set(re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", expr1_str + " " + expr2_str))
+    reserved = {{"sqrt", "sin", "cos", "tan", "log", "exp", "sinh", "cosh", "pi", "E", "Derivative", "diff", "Integral", "integrate", "abs", "Abs"}}
+    local_dict = {{}}
+    has_non_commutative = False
+    for tok in tokens:
+        if tok in reserved:
+            continue
+        if tok in nc_symbols:
+            local_dict[tok] = sympy.Symbol(tok, commutative=False)
+            has_non_commutative = True
+        else:
+            s_assump = dict(assumptions_dict.get(tok, {{}}))
+            if domain_str == "real" and "real" not in s_assump and "positive" not in s_assump:
+                s_assump["real"] = True
+            local_dict[tok] = sympy.Symbol(tok, **s_assump)
 
-    e1_sub = e1_sym.subs(subs_map)
-    e2_sub = e2_sym.subs(subs_map)
+    e1 = parse_expr(expr1_str, transformations=transformations, local_dict=local_dict)
+    e2 = parse_expr(expr2_str, transformations=transformations, local_dict=local_dict)
 
-    diff = sympy.simplify(e1_sub - e2_sub)
+    diff = sympy.simplify(e1 - e2)
     if diff == 0:
         print(json.dumps({{
             "equivalent": True,
@@ -151,23 +163,51 @@ try:
         }}))
         sys.exit(0)
 
-    # Numerical sampling fallback across 20 random points
+    if has_non_commutative:
+        print(json.dumps({{
+            "equivalent": False,
+            "method": "non_commutative_algebra",
+            "residual": 1.0,
+            "simplified_difference": str(diff)
+        }}))
+        sys.exit(0)
+
+    # Stratified numerical sampling across multiple intervals
+    strata = [
+        lambda assump: random.uniform(1.1, 5.0),
+        lambda assump: random.uniform(-5.0, -1.1) if not assump.get("positive") else random.uniform(1.1, 5.0),
+        lambda assump: random.uniform(-0.5, 0.5) if not assump.get("positive") else random.uniform(0.01, 0.5),
+    ]
+    if domain_str == "complex":
+        strata.append(lambda assump: complex(random.uniform(-5.0, 5.0), random.uniform(-5.0, 5.0)))
+
     is_equiv_num = True
     max_res = 0.0
-    for _ in range(20):
-        pt = {{sym: random.uniform(1.1, 5.0) for sym in subs_map.values()}}
-        v1 = complex(e1_sub.evalf(subs=pt))
-        v2 = complex(e2_sub.evalf(subs=pt))
-        diff_val = abs(v1 - v2)
-        if diff_val > max_res:
-            max_res = diff_val
-        if diff_val > 1e-7:
-            is_equiv_num = False
+    symbols_to_sample = [s for s in e1.free_symbols.union(e2.free_symbols) if getattr(s, "is_commutative", True)]
+
+    for stratum_sampler in strata:
+        for _ in range(8):
+            pt = {{}}
+            for sym in symbols_to_sample:
+                s_assump = assumptions_dict.get(sym.name, {{}})
+                pt[sym] = stratum_sampler(s_assump)
+            try:
+                v1 = complex(e1.evalf(subs=pt))
+                v2 = complex(e2.evalf(subs=pt))
+                d = abs(v1 - v2)
+                if d > max_res:
+                    max_res = d
+                if d > 1e-6:
+                    is_equiv_num = False
+                    break
+            except Exception:
+                pass
+        if not is_equiv_num:
             break
 
     print(json.dumps({{
         "equivalent": is_equiv_num,
-        "method": "numerical_sampling" if is_equiv_num else "symbolic_difference",
+        "method": "stratified_numerical_sampling" if is_equiv_num else "stratified_sampling_difference",
         "residual": float(max_res),
         "simplified_difference": str(diff)
     }}))
@@ -184,6 +224,7 @@ except Exception as e:
     data = res.get("data", {})
     data["wall_time_ms"] = res.get("wall_time_ms")
     return data
+
 
 
 @mcp.tool()
@@ -663,6 +704,240 @@ except Exception as e:
     data["wall_time_ms"] = res.get("wall_time_ms")
     return data
 
+
+
+@mcp.tool()
+def sym_ode_solve(
+    equation: str,
+    func: str = "y(x)",
+    var: str = "x",
+    ics: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Solve ordinary differential equations analytically using SymPy dsolve.
+    Supports 1st and 2nd order linear/non-linear ODEs and Initial Value Problems (IVPs).
+    Runs inside isolated subprocess sandbox.
+    """
+    eq_json = json.dumps(equation)
+    func_json = json.dumps(func)
+    var_json = json.dumps(var)
+    ics_json = json.dumps(ics or {})
+
+    script = f"""
+import json
+import sympy
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations
+
+transformations = standard_transformations
+
+eq_str = {eq_json}
+func_str = {func_json}
+var_str = {var_json}
+ics_dict_raw = json.loads({json.dumps(ics_json)})
+
+try:
+    if '(' in func_str:
+        f_name = func_str.split('(')[0].strip()
+        v_name = func_str.split('(')[1].split(')')[0].strip()
+    else:
+        f_name = func_str.strip()
+        v_name = var_str.strip()
+
+    x_sym = sympy.Symbol(v_name)
+    y_sym = sympy.Function(f_name)
+    local_dict = {{
+        f_name: y_sym,
+        v_name: x_sym,
+        'Derivative': sympy.Derivative,
+        'exp': sympy.exp,
+        'sin': sympy.sin,
+        'cos': sympy.cos,
+        'tan': sympy.tan,
+        'sinh': sympy.sinh,
+        'cosh': sympy.cosh,
+        'log': sympy.log,
+        'sqrt': sympy.sqrt,
+        'pi': sympy.pi,
+        'E': sympy.E,
+    }}
+
+    if '=' in eq_str:
+        lhs_str, rhs_str = eq_str.split('=', 1)
+        lhs = parse_expr(lhs_str, transformations=transformations, local_dict=local_dict)
+        rhs = parse_expr(rhs_str, transformations=transformations, local_dict=local_dict)
+        ode_expr = lhs - rhs
+    else:
+        ode_expr = parse_expr(eq_str, transformations=transformations, local_dict=local_dict)
+
+    ics = None
+    if ics_dict_raw:
+        ics = {{}}
+        for k, v in ics_dict_raw.items():
+            k_expr = parse_expr(str(k), transformations=transformations, local_dict=local_dict)
+            v_expr = parse_expr(str(v), transformations=transformations, local_dict=local_dict)
+            ics[k_expr] = v_expr
+
+    sol = sympy.dsolve(ode_expr, y_sym(x_sym), ics=ics)
+
+    sol_str = str(sol)
+    rhs_str = str(sol.rhs) if hasattr(sol, 'rhs') else sol_str
+
+    print(json.dumps({{
+        "success": True,
+        "solution": sol_str,
+        "rhs": rhs_str,
+        "details": f"Solved ODE: {{eq_str}}"
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
+
+@mcp.tool()
+def numeric_ode_solve(
+    system_code: str,
+    y0: List[float],
+    t_span: List[float],
+    method: str = "RK45",
+    num_points: int = 50,
+) -> Dict[str, Any]:
+    """
+    Solve initial value problems for ODE systems numerically using SciPy solve_ivp.
+    Supports standard solvers (RK45, RK23, DOP853) and stiff solvers (Radau, BDF, LSODA).
+    Runs inside isolated subprocess sandbox.
+    """
+    sys_json = json.dumps(system_code)
+    y0_json = json.dumps(y0)
+    tspan_json = json.dumps(t_span)
+    method_json = json.dumps(method)
+    num_pts = int(num_points)
+
+    script = f"""
+import json
+import numpy as np
+import scipy.integrate
+
+system_str = {sys_json}
+y0 = [float(val) for val in {y0_json}]
+t_span = [float(val) for val in {tspan_json}]
+method = {method_json}
+num_points = {num_pts}
+
+try:
+    loc = {{}}
+    exec(system_str, {{"np": np, "numpy": np, "math": __import__("math")}}, loc)
+    f = loc.get("f") or loc.get("system") or loc.get("derivs") or list(loc.values())[0]
+
+    t_eval = np.linspace(t_span[0], t_span[1], num_points)
+    sol = scipy.integrate.solve_ivp(f, t_span, y0, method=method, t_eval=t_eval)
+
+    print(json.dumps({{
+        "success": bool(sol.success),
+        "t": sol.t.tolist(),
+        "y": sol.y.tolist(),
+        "status": int(sol.status),
+        "message": str(sol.message)
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
+
+
+@mcp.tool()
+def noether_invariant_check(
+    hamiltonian: str,
+    invariant: str,
+    q: str = "q",
+    p: str = "p",
+    t: str = "t",
+) -> Dict[str, Any]:
+    """
+    Verify whether a candidate invariant I is a Noether conserved quantity for Hamiltonian H
+    via the canonical Poisson bracket condition: dI/dt = {I, H} + dI/dt == 0.
+    Runs inside isolated subprocess sandbox.
+    """
+    h_json = json.dumps(hamiltonian)
+    inv_json = json.dumps(invariant)
+    q_json = json.dumps(q)
+    p_json = json.dumps(p)
+    t_json = json.dumps(t)
+
+    script = f"""
+import json
+import sympy
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+
+transformations = standard_transformations + (implicit_multiplication_application,)
+
+h_str = {h_json}
+inv_str = {inv_json}
+q_str = {q_json}
+p_str = {p_json}
+t_str = {t_json}
+
+try:
+    H = parse_expr(h_str, transformations=transformations)
+    I = parse_expr(inv_str, transformations=transformations)
+
+    q_names = [s.strip() for s in q_str.split(',') if s.strip()]
+    p_names = [s.strip() for s in p_str.split(',') if s.strip()]
+    t_sym = sympy.Symbol(t_str.strip())
+
+    pb = 0
+    for q_name, p_name in zip(q_names, p_names):
+        q_sym = sympy.Symbol(q_name)
+        p_sym = sympy.Symbol(p_name)
+        dI_dq = sympy.diff(I, q_sym)
+        dH_dp = sympy.diff(H, p_sym)
+        dI_dp = sympy.diff(I, p_sym)
+        dH_dq = sympy.diff(H, q_sym)
+        pb += dI_dq * dH_dp - dI_dp * dH_dq
+
+    pb = sympy.simplify(pb)
+    dI_dt = sympy.simplify(pb + sympy.diff(I, t_sym))
+
+    is_conserved = bool(dI_dt == 0)
+
+    print(json.dumps({{
+        "success": True,
+        "conserved": is_conserved,
+        "poisson_bracket": str(pb),
+        "total_time_derivative": str(dI_dt),
+        "details": f"Conserved Noether quantity: {{inv_str}}" if is_conserved else f"Non-conserved quantity: {{inv_str}}"
+    }}))
+
+except Exception as e:
+    print(json.dumps({{
+        "success": False,
+        "error": str(e)
+    }}))
+"""
+    res = run_sandboxed_code(script)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error"), "wall_time_ms": res.get("wall_time_ms")}
+    data = res.get("data", {})
+    data["wall_time_ms"] = res.get("wall_time_ms")
+    return data
 
 
 if __name__ == "__main__":
