@@ -45,6 +45,12 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 # Root path anchor
 ROOT = Path(__file__).resolve().parents[1]
 
+# Security Guardrails & Sandbox
+from scripts.security.ast_guard import AstSecurityGuard
+from scripts.security.windows_sandbox import WindowsJobSandbox
+
+_AST_GUARD = AstSecurityGuard()
+
 # Quality Gate Thresholds
 SVR_THRESHOLD: float = 1.0       # 100.0% Syntax Validity Rate
 LCR_THRESHOLD: float = 0.85      # >= 85.0% Language Conformance Rate
@@ -740,39 +746,72 @@ def execute_code_and_tests(
     lang = language.lower()
     t0 = time.time()
 
-    # 1. Python Execution
+    # 1. Python Execution (Sandboxed via Win32 Job Object & AST Guard)
     if lang == "python":
         combined = f"{source_code}\n\n{test_suite}\n"
-        scope: Dict[str, Any] = {}
-        try:
-            exec(combined, scope)
-            # Find and execute test functions
-            test_funcs = [k for k, v in scope.items() if k.startswith("test_") and callable(v)]
-            for tf in test_funcs:
-                scope[tf]()
+        sec_report = _AST_GUARD.check_python(combined)
+        if not sec_report.is_safe:
             elapsed = round(time.time() - t0, 3)
             return ExecutionResult(
                 language="python",
-                executed=True,
-                passed=True,
-                runtime="python-inprocess",
-                output=f"Executed {len(test_funcs)} test functions successfully",
-                elapsed_seconds=elapsed,
-            )
-        except Exception as e:
-            elapsed = round(time.time() - t0, 3)
-            return ExecutionResult(
-                language="python",
-                executed=True,
+                executed=False,
                 passed=False,
-                runtime="python-inprocess",
+                runtime="ast-guard-blocked",
                 output="",
-                error=f"{type(e).__name__}: {e}",
+                error=f"SecurityViolation: {sec_report.violations[0].message}",
                 elapsed_seconds=elapsed,
             )
 
-    # 2. TypeScript Execution (via Node.js v24 strip-types)
+        runner_script = f"""# Isolated Python Test Runner
+import sys
+{source_code}
+
+{test_suite}
+
+test_funcs = [k for k, v in list(globals().items()) if k.startswith("test_") and callable(v)]
+for tf in test_funcs:
+    globals()[tf]()
+print(f"Executed {{len(test_funcs)}} test functions successfully")
+"""
+        sandbox = WindowsJobSandbox(max_memory_mb=256, timeout_seconds=timeout)
+        res = sandbox.run_python_script(runner_script)
+        elapsed = round(time.time() - t0, 3)
+        passed = res.success and (res.exit_code == 0) and not res.timed_out and not res.memory_breached
+        error_msg = None
+        if not passed:
+            if res.timed_out:
+                error_msg = f"Execution timed out after {timeout}s"
+            elif res.memory_breached:
+                error_msg = "Process memory limit exceeded (256 MB ceiling)"
+            else:
+                error_msg = res.stderr.strip() or f"Process failed with exit code {res.exit_code}"
+
+        return ExecutionResult(
+            language="python",
+            executed=True,
+            passed=passed,
+            runtime="python-sandbox",
+            output=res.stdout.strip(),
+            error=error_msg,
+            elapsed_seconds=elapsed,
+        )
+
+    # 2. TypeScript Execution (via Node.js v24 strip-types & AST Guard)
     elif lang == "typescript":
+        combined = f"{source_code}\n\n{test_suite}\n"
+        sec_report = _AST_GUARD.check_typescript(combined)
+        if not sec_report.is_safe:
+            elapsed = round(time.time() - t0, 3)
+            return ExecutionResult(
+                language="typescript",
+                executed=False,
+                passed=False,
+                runtime="ast-guard-blocked",
+                output="",
+                error=f"SecurityViolation: {sec_report.violations[0].message}",
+                elapsed_seconds=elapsed,
+            )
+
         node_bin = get_node_executable()
         if not node_bin:
             return ExecutionResult(
@@ -782,7 +821,6 @@ def execute_code_and_tests(
                 runtime="node-unavailable",
                 output="Node.js not installed on host",
             )
-        combined = f"{source_code}\n\n{test_suite}\n"
         with tempfile.NamedTemporaryFile("w", suffix=".ts", delete=False, encoding="utf-8") as f:
             f.write(combined)
             tmp_path = f.name
@@ -792,6 +830,7 @@ def execute_code_and_tests(
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                stdin=subprocess.DEVNULL,
             )
             elapsed = round(time.time() - t0, 3)
             # Check exit code and ensure no assertion failure in stderr
@@ -819,8 +858,26 @@ def execute_code_and_tests(
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    # 3. PHP Execution (via PHP 8.3 CLI)
+    # 3. PHP Execution (via PHP 8.3 CLI & AST Guard)
     elif lang == "php":
+        # Combine PHP source and test script cleanly
+        clean_src = source_code.replace("<?php", "").strip()
+        clean_tests = test_suite.replace("<?php", "").strip()
+        combined_php = f"<?php\n{clean_src}\n\n{clean_tests}\n"
+
+        sec_report = _AST_GUARD.check_php(combined_php)
+        if not sec_report.is_safe:
+            elapsed = round(time.time() - t0, 3)
+            return ExecutionResult(
+                language="php",
+                executed=False,
+                passed=False,
+                runtime="ast-guard-blocked",
+                output="",
+                error=f"SecurityViolation: {sec_report.violations[0].message}",
+                elapsed_seconds=elapsed,
+            )
+
         php_bin = get_php_executable()
         if not php_bin:
             return ExecutionResult(
@@ -830,10 +887,6 @@ def execute_code_and_tests(
                 runtime="php-unavailable",
                 output="PHP CLI not found on host",
             )
-        # Combine PHP source and test script cleanly
-        clean_src = source_code.replace("<?php", "").strip()
-        clean_tests = test_suite.replace("<?php", "").strip()
-        combined_php = f"<?php\n{clean_src}\n\n{clean_tests}\n"
 
         with tempfile.NamedTemporaryFile("w", suffix=".php", delete=False, encoding="utf-8") as f:
             f.write(combined_php)
@@ -844,6 +897,7 @@ def execute_code_and_tests(
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                stdin=subprocess.DEVNULL,
             )
             elapsed = round(time.time() - t0, 3)
             passed = (res.returncode == 0) and ("Fatal error" not in res.stderr) and ("Parse error" not in res.stderr)
@@ -870,8 +924,22 @@ def execute_code_and_tests(
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    # 4. SQL Execution (via SQLite in-memory database)
+    # 4. SQL Execution (via SQLite in-memory database & AST Guard)
     elif lang == "sql":
+        combined_sql = f"{source_code}\n\n{test_suite}\n"
+        sec_report = _AST_GUARD.check_sql(combined_sql)
+        if not sec_report.is_safe:
+            elapsed = round(time.time() - t0, 3)
+            return ExecutionResult(
+                language="sql",
+                executed=False,
+                passed=False,
+                runtime="ast-guard-blocked",
+                output="",
+                error=f"SecurityViolation: {sec_report.violations[0].message}",
+                elapsed_seconds=elapsed,
+            )
+
         conn = sqlite3.connect(":memory:")
         try:
             # First execute setup DDL from test suite if present

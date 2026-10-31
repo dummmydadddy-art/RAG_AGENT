@@ -375,7 +375,7 @@ class TestPillar3ExecutionPassRate:
         res = execute_code_and_tests(src, tests, "python")
         assert res.executed is True
         assert res.passed is True
-        assert res.runtime == "python-inprocess"
+        assert res.runtime in ("python-inprocess", "python-sandbox")
 
     def test_execution_python_native_failure(self):
         """Python execution failure is captured accurately."""
