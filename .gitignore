@@ -43,3 +43,7 @@ models/lora_adapters/
 # Teamwork transient files
 .agents/teamwork/
 
+# Export archives
+*.bundle
+*.zip
+
