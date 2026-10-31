@@ -15,3 +15,7 @@ This rule governs test authoring, test execution, and verification invariants ac
 - All data layer and adapter interfaces (`RagAdapter`) must have dedicated contract tests.
 - Contract test suites must execute identically against both in-memory test stubs and live backends (`StubBackend` and `LocalSqliteRagBackend`).
 - Any backend failing a contract test is blocked from production deployment.
+
+## 4. Windows Subprocess & Shell Isolation
+- Never execute unquoted shell commands containing nested quotes in PowerShell.
+- When spawning Python subprocesses from within MCP server tools on Windows, **always specify `stdin=subprocess.DEVNULL`**. Failure to do so causes child interpreters to inherit the parent JSON-RPC stdin pipe, resulting in silent timeouts.

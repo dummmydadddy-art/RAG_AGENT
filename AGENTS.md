@@ -9,6 +9,7 @@ This document establishes development conventions for all agents and contributor
   - Paths: Always use `pathlib.Path` for cross-platform Windows compatibility.
   - Encodings: Always specify `encoding="utf-8"` when reading or writing files.
 - **RAG Backend**: PHP 8.3 REST API and SQLite vector database (`backend/storage/vectors.sqlite`).
+  - **Memory Ceiling Guard**: Capped at $\le 500$ rows in `material_chunks` until SQ8 quantization is implemented to protect the 128 MB PHP process memory limit.
 - **Shell**: PowerShell 5.1 / 7 on Windows 11. Scripts located in `scripts/`.
 
 ## 2. Test-Driven Development (TDD)
