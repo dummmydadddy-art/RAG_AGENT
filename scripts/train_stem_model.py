@@ -366,7 +366,7 @@ class SftDatasetBuilder:
     def build_alpaca_dataset(self, records: List[Any], max_tokens: int = 1024) -> List[Dict[str, str]]:
         """Converts records (dicts or DTOs) to standard Alpaca instruction-tuning schema with token cutoff."""
         alpaca_samples: List[Dict[str, str]] = []
-        max_char_limit = min(4096, int(max_tokens * 4))
+        max_char_limit = min(16384, int(max_tokens * 4))
 
         for rec in records:
             if isinstance(rec, dict) and "instruction" in rec and "input" in rec and "output" in rec:
@@ -647,7 +647,8 @@ ddp_timeout: 180000000
         return f"""# Modelfile for {model_name}
 FROM {gguf_path}
 
-# Runtime Parameters optimized for low VRAM
+# Runtime Parameters optimized for low VRAM and expanded context (4096 tokens)
+PARAMETER num_ctx 4096
 PARAMETER temperature 0.2
 PARAMETER top_p 0.95
 PARAMETER top_k 40

@@ -1,7 +1,8 @@
 # Modelfile for stem-coder-expert
 FROM ./stem-coder-expert-q4_k_m.gguf
 
-# Runtime Parameters optimized for low VRAM
+# Runtime Parameters optimized for low VRAM and expanded context (4096 tokens)
+PARAMETER num_ctx 4096
 PARAMETER temperature 0.2
 PARAMETER top_p 0.95
 PARAMETER top_k 40
