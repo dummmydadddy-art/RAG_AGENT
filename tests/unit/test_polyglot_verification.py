@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
@@ -50,6 +51,8 @@ from scripts.verify_polyglot import (
     get_php_executable,
     get_polyglot_benchmark_catalog,
     get_python_executable,
+    get_stem_curriculum_polyglot_challenges,
+    load_stem_curriculum_modules,
     main,
     validate_syntax,
 )
@@ -552,3 +555,96 @@ class TestOllamaVerifierAndHarness:
         assert exit_code == 0
         assert json_file.exists()
         assert txt_file.exists()
+
+
+# ============================================================================
+# 9. STEM CURRICULUM INTEGRATION TESTS
+# ============================================================================
+
+class TestSTEMCurriculumPolyglotIntegration:
+    """Verifies that the 52 STEM curriculum modules are ingested, mapped, and verified."""
+
+    def test_load_stem_curriculum_modules_from_dataset(self):
+        """Verifies loading of all 52 modules with expected tier and domain breakdown."""
+        modules = load_stem_curriculum_modules()
+        assert len(modules) == 52
+
+        tiers = {m["tier"] for m in modules}
+        assert tiers == {"elementary", "secondary", "higher_secondary", "sme"}
+
+        tier_counts = {}
+        domain_counts = {}
+        for m in modules:
+            t = m["tier"]
+            d = m["domain"]
+            tier_counts[t] = tier_counts.get(t, 0) + 1
+            domain_counts[d] = domain_counts.get(d, 0) + 1
+
+        assert tier_counts["elementary"] == 12
+        assert tier_counts["secondary"] == 14
+        assert tier_counts["higher_secondary"] == 15
+        assert tier_counts["sme"] == 11
+        assert domain_counts["maths"] == 25
+        assert domain_counts["physics"] == 27
+
+    def test_stem_curriculum_challenges_syntax_and_conformance(self):
+        """All STEM curriculum polyglot challenges satisfy 100% SVR and >= 85% LCR."""
+        challenges = get_stem_curriculum_polyglot_challenges()
+        assert len(challenges) >= 10
+
+        languages_present = {c["language"] for c in challenges}
+        for lang in TIER1_LANGUAGES:
+            assert lang in languages_present, f"Missing STEM challenge for Tier-1 language: {lang}"
+
+        for ch in challenges:
+            c_id = ch["id"]
+            lang = ch["language"]
+            solution = ch["reference_solution"]
+
+            svr_ok, svr_msg = validate_syntax(solution, lang)
+            assert svr_ok is True, f"SVR failed for {c_id} ({lang}): {svr_msg}"
+
+            lcr_res = check_language_conformance(solution, lang)
+            assert lcr_res.score >= LCR_THRESHOLD, (
+                f"LCR failed for {c_id} ({lang}): score={lcr_res.score}, failed={lcr_res.failed_rules}"
+            )
+
+    def test_stem_curriculum_native_execution(self):
+        """Native runtime STEM challenges (Python, TypeScript, PHP, SQL) pass unit tests."""
+        challenges = get_stem_curriculum_polyglot_challenges()
+        native_langs = {"python", "typescript", "php", "sql"}
+
+        for ch in challenges:
+            lang = ch["language"]
+            if lang in native_langs:
+                res = execute_code_and_tests(ch["reference_solution"], ch["unit_test_suite"], lang)
+                assert res.executed is True, f"Execution skipped for native challenge {ch['id']}"
+                assert res.passed is True, f"Execution failed for {ch['id']}: {res.error}"
+
+    def test_quality_gate_summary_includes_stem_curriculum(self):
+        """Quality gate evaluation attaches STEM curriculum summary and benchmarks."""
+        harness = PolyglotVerificationHarness(offline_only=True)
+        summary = harness.evaluate_quality_gate()
+
+        assert "stem_curriculum_summary" in asdict(summary)
+        sc = summary.stem_curriculum_summary
+        assert sc["total_curriculum_modules"] == 52
+        assert sc["represented_in_polyglot"] is True
+        assert sc["stem_challenges_evaluated"] >= 10
+        assert sc["stem_svr_rate"] == 1.0
+        assert sc["stem_lcr_rate"] >= LCR_THRESHOLD
+        assert sc["stem_epr_rate"] == 1.0
+
+        assert len(summary.stem_curriculum_benchmarks) >= 10
+
+    def test_text_report_includes_stem_curriculum_section(self):
+        """Generated text report formats STEM curriculum breakdown and metrics."""
+        harness = PolyglotVerificationHarness(offline_only=True)
+        summary = harness.evaluate_quality_gate()
+        text = generate_text_summary(summary)
+
+        assert "STEM CURRICULUM INTEGRATION (52 MODULES INGESTED)" in text
+        assert "STEM CURRICULUM BENCHMARK BREAKDOWN:" in text
+        assert "STEM-PY-ELEM-001" in text
+        assert "STEM-SQL-SME-001" in text
+

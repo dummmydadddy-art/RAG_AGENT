@@ -42,6 +42,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 DEFAULT_CURRICULUM_PATH = ROOT / "data" / "stem_curriculum_expanded.json"
 DEFAULT_DB_PATH = ROOT / "backend" / "storage" / "vectors.sqlite"
+DEFAULT_INSTRUCT_DATASET_PATH = ROOT / "data" / "stem_instruct_dataset.json"
 
 
 @dataclass
@@ -406,8 +407,8 @@ class CurriculumGoldStage:
                 )
                 stats["rag_documents_written"] += 1
 
-            # 2. Ingest into material_chunks respecting ceiling
-            cursor.execute("SELECT COUNT(*) FROM material_chunks WHERE course_id = 'stem_curriculum'")
+            # 2. Ingest into material_chunks respecting global ceiling to protect PHP 128MB RAM
+            cursor.execute("SELECT COUNT(*) FROM material_chunks")
             current_count = cursor.fetchone()[0]
 
             available_slots = max(0, self.max_material_chunks - current_count)
@@ -465,19 +466,90 @@ class CurriculumGoldStage:
 
 
 # ============================================================================
-# 4. PIPELINE RUNNER & CLI
+# 4. SFT INSTRUCTION DATASET EXPORT ROUTINE
+# ============================================================================
+
+def export_curriculum_instruct_dataset(
+    items: Optional[List[CurriculumItem]] = None,
+    output_path: Optional[Path] = DEFAULT_INSTRUCT_DATASET_PATH,
+    max_tokens: int = 1024,
+) -> List[Dict[str, Any]]:
+    """
+    Exports curriculum items to standard Alpaca instruction-tuning schema ({"instruction", "input", "output"})
+    strictly adhering to sequence cutoff <= 1024 tokens (<= 4096 characters).
+    """
+    if items is None:
+        items = load_curriculum_dataset()
+
+    target_path = Path(output_path) if output_path else None
+    if target_path:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    alpaca_records: List[Dict[str, Any]] = []
+    # Conservative character cutoff: 1024 tokens * 4 chars/token = 4096 chars
+    max_char_limit = min(4096, int(max_tokens * 4))
+
+    for item in items:
+        domain_str = item.domain.upper()
+        grade_str = item.grade_level or item.tier.replace("_", " ").title()
+        instruction = (
+            f"Domain: {domain_str} | Level: {grade_str}\n"
+            f"Question / Challenge:\n{item.example_problem}"
+        )
+        input_data = f"Relevant Principles:\n{item.concept}" if item.concept else ""
+        output_data = item.solution_steps
+
+        # Enforce sequence cutoff <= 1024 tokens (<= 4096 characters)
+        total_len = len(instruction) + len(input_data) + len(output_data)
+        if total_len > max_char_limit:
+            overflow = total_len - max_char_limit
+            if len(output_data) > overflow + 100:
+                output_data = output_data[:len(output_data) - overflow - 35] + "\n... [truncated for token budget]"
+            else:
+                output_data = output_data[:500] + "\n... [truncated for token budget]"
+                rem = (len(instruction) + len(input_data) + len(output_data)) - max_char_limit
+                if rem > 0 and len(instruction) > rem + 50:
+                    instruction = instruction[:len(instruction) - rem - 35] + "\n... [truncated for token budget]"
+                elif rem > 0:
+                    instruction = instruction[:max(50, len(instruction) - rem)]
+
+        record = {
+            "id": item.id,
+            "title": item.title,
+            "domain": item.domain,
+            "tier": item.tier,
+            "grade_level": item.grade_level,
+            "instruction": instruction,
+            "input": input_data,
+            "output": output_data,
+            "tags": item.tags,
+        }
+        alpaca_records.append(record)
+
+    if target_path:
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(alpaca_records, f, indent=2, ensure_ascii=False)
+        logger.info(
+            f"Export: Successfully exported {len(alpaca_records)} STEM curriculum instruction records to {target_path} (cutoff <= {max_tokens} tokens)"
+        )
+    return alpaca_records
+
+
+# ============================================================================
+# 5. PIPELINE RUNNER & CLI
 # ============================================================================
 
 def run_curriculum_ingestion_pipeline(
     input_file: Optional[Path] = None,
     db_path: Optional[Path] = None,
+    output_dataset: Optional[Path] = None,
     ollama_url: str = "http://localhost:11434",
     embed_model: str = "nomic-embed-text",
     max_material_chunks: int = 500,
     enable_ollama: bool = True,
     fuzzy_threshold: float = 0.82,
 ) -> Dict[str, Any]:
-    """Executes the complete Bronze -> Silver -> Gold Curriculum Ingestion Pipeline."""
+    """Executes the complete Bronze -> Silver -> Gold Curriculum Ingestion Pipeline with SFT Export."""
     logger.info("=== Starting STEM Curriculum Ingestion Pipeline ===")
 
     # 1. Bronze Stage
@@ -499,6 +571,10 @@ def run_curriculum_ingestion_pipeline(
     )
     gold_stats = gold.persist(deduped, collection="stem_curriculum")
 
+    # 4. SFT Instruction Dataset Export
+    export_path = output_dataset or DEFAULT_INSTRUCT_DATASET_PATH
+    exported_records = export_curriculum_instruct_dataset(deduped, output_path=export_path, max_tokens=1024)
+
     summary = {
         "status": "success",
         "timestamp": datetime.now().isoformat(),
@@ -506,6 +582,8 @@ def run_curriculum_ingestion_pipeline(
         "silver_retained": len(deduped),
         "silver_stats": silver_stats,
         "gold_stats": gold_stats,
+        "exported_count": len(exported_records),
+        "export_path": str(export_path),
     }
     logger.info("=== Curriculum Pipeline Summary: %s ===", json.dumps(summary, indent=2))
     return summary
@@ -515,6 +593,7 @@ def main():
     parser = argparse.ArgumentParser(description="Ingest and deduplicate expanded STEM curriculum into SQLite vector store.")
     parser.add_argument("--input", type=Path, default=DEFAULT_CURRICULUM_PATH, help="Input curriculum JSON file.")
     parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH, help="Path to vectors.sqlite database.")
+    parser.add_argument("--output-dataset", type=Path, default=DEFAULT_INSTRUCT_DATASET_PATH, help="Path to output instruction JSON dataset.")
     parser.add_argument("--ollama-url", type=str, default="http://localhost:11434", help="Ollama API URL.")
     parser.add_argument("--embed-model", type=str, default="nomic-embed-text", help="Embedding model tag.")
     parser.add_argument("--max-chunks", type=int, default=500, help="Max rows for material_chunks to protect PHP RAM.")
@@ -525,6 +604,7 @@ def main():
     run_curriculum_ingestion_pipeline(
         input_file=args.input,
         db_path=args.db_path,
+        output_dataset=args.output_dataset,
         ollama_url=args.ollama_url,
         embed_model=args.embed_model,
         max_material_chunks=args.max_chunks,

@@ -205,6 +205,47 @@ class TestFeature7GgufQuantization:
         ratio = (fp16_size - q4_size) / fp16_size
         assert 0.60 <= ratio <= 0.70
 
+    def test_validate_gguf_non_existent_file(self, tmp_path: Path):
+        """Verify validate_gguf_file handles non-existent file cleanly."""
+        missing = tmp_path / "does_not_exist.gguf"
+        info = validate_gguf_file(missing)
+        assert info["valid"] is False
+        assert "does not exist" in info["error"].lower()
+
+    def test_validate_gguf_too_small_file(self, tmp_path: Path):
+        """Verify validate_gguf_file handles file smaller than 4 bytes."""
+        small = tmp_path / "small.gguf"
+        small.write_bytes(b"G")
+        info = validate_gguf_file(small)
+        assert info["valid"] is False
+        assert "smaller" in info["error"].lower()
+
+    def test_quantize_to_q4_k_m_failure_raises(self, tmp_path: Path):
+        """Verify quantize_to_q4_k_m raises RuntimeError on non-zero exit code."""
+        in_p = tmp_path / "in.gguf"
+        out_p = tmp_path / "out.gguf"
+        in_p.write_bytes(b"GGUF" + b"\x00" * 32)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Corrupt tensor block")
+            with pytest.raises(RuntimeError) as exc_info:
+                quantize_to_q4_k_m(in_p, out_p)
+            assert "Corrupt tensor block" in str(exc_info.value)
+
+    def test_actual_disk_gguf_binary_metadata(self):
+        """Verify actual models/stem-coder-expert-q4_k_m.gguf binary on disk."""
+        target_gguf = ROOT / "models" / "stem-coder-expert-q4_k_m.gguf"
+        if not target_gguf.exists():
+            pytest.skip("Production GGUF model not generated yet")
+
+        info = validate_gguf_file(target_gguf)
+        assert info["valid"] is True
+        assert info["magic"] == "GGUF"
+        assert info["version"] == 3
+        assert info["tensor_count"] >= 250
+        assert info["kv_count"] >= 10
+        assert 900.0 <= info["size_mb"] <= 1200.0
+
 
 # ============================================================================
 # 3. ZERO-REDUNDANCY SSD CLEANUP TESTS (F8)
@@ -300,3 +341,34 @@ class TestFeature9OllamaDeployment:
             assert "factorial" in result["response"]
             assert result["model"] == "stem-coder-expert:latest"
             mock_post.assert_called_once()
+
+    def test_deploy_to_ollama_missing_modelfile_raises(self, tmp_path: Path):
+        """Verify deploy_to_ollama raises FileNotFoundError on missing modelfile."""
+        missing_mf = tmp_path / "NonExistentModelfile"
+        with pytest.raises(FileNotFoundError):
+            deploy_to_ollama(model_tag="test:latest", modelfile_path=missing_mf)
+
+    def test_run_smoke_inference_http_error_response(self):
+        """Verify run_smoke_inference returns success=False on HTTP 500 error."""
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value = MagicMock(
+                status_code=500,
+                text="Internal Daemon Error"
+            )
+            result = run_smoke_inference(
+                prompt="Test prompt",
+                model_tag="stem-coder-expert:latest"
+            )
+            assert result["success"] is False
+            assert "500" in result["error"]
+
+    def test_run_smoke_inference_exception_handling(self):
+        """Verify run_smoke_inference catches connection exceptions cleanly."""
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.side_effect = ConnectionRefusedError("Connection refused on port 11434")
+            result = run_smoke_inference(
+                prompt="Test prompt",
+                model_tag="stem-coder-expert:latest"
+            )
+            assert result["success"] is False
+            assert "Connection refused" in result["error"]

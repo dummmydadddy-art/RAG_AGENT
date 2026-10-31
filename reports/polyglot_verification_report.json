@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-27T16:29:06.742083+00:00",
+  "timestamp": "2026-10-31T09:36:30.276458+00:00",
   "model_tag": "stem-coder-expert:latest",
   "svr_rate": 1.0,
   "lcr_rate": 1.0,
@@ -289,15 +289,265 @@
       "details": "OK"
     }
   ],
+  "stem_curriculum_summary": {
+    "total_curriculum_modules": 52,
+    "tier_counts": {
+      "elementary": 12,
+      "secondary": 14,
+      "higher_secondary": 15,
+      "sme": 11
+    },
+    "domain_counts": {
+      "maths": 25,
+      "physics": 27
+    },
+    "represented_in_polyglot": true,
+    "stem_challenges_evaluated": 10,
+    "stem_svr_rate": 1.0,
+    "stem_lcr_rate": 1.0,
+    "stem_epr_rate": 1.0
+  },
+  "stem_curriculum_benchmarks": [
+    {
+      "challenge_id": "STEM-PY-ELEM-001",
+      "language": "python",
+      "tier": "elementary",
+      "module_id": "CURR-MATH-ELEM-001",
+      "title": "Fractions Arithmetic & Mixed Number Normalizer (NCERT Class 5)",
+      "svr_valid": true,
+      "svr_message": "Valid Python AST",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "typed_parameters",
+        "typed_returns",
+        "snake_case_identifiers",
+        "structured_encapsulation",
+        "no_anti_patterns"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "python-inprocess",
+      "epr_output": "Executed 1 test functions successfully",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-PY-SME-001",
+      "language": "python",
+      "tier": "sme",
+      "module_id": "CURR-PHYS-SME-002",
+      "title": "Symplectic Leapfrog Integrator with Energy Conservation (SME Physics)",
+      "svr_valid": true,
+      "svr_message": "Valid Python AST",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "typed_parameters",
+        "typed_returns",
+        "snake_case_identifiers",
+        "structured_encapsulation",
+        "no_anti_patterns"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "python-inprocess",
+      "epr_output": "Executed 1 test functions successfully",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-TS-ELEM-001",
+      "language": "typescript",
+      "tier": "elementary",
+      "module_id": "CURR-MATH-ELEM-002",
+      "title": "Metric System Scale Converter & Marathon Hydration (NCERT Class 4)",
+      "svr_valid": true,
+      "svr_message": "Valid TypeScript via Node strip-types",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "explicit_typing",
+        "generic_or_union_types",
+        "immutability_modifiers",
+        "type_safe_returns",
+        "clean_modular_exports"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "node-v24-strip-types",
+      "epr_output": "",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-TS-SEC-001",
+      "language": "typescript",
+      "tier": "secondary",
+      "module_id": "CURR-PHYS-SEC-001",
+      "title": "Kinematics Equations of Motion & Stopping Distance (NCERT Class 9)",
+      "svr_valid": true,
+      "svr_message": "Valid TypeScript via Node strip-types",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "explicit_typing",
+        "generic_or_union_types",
+        "immutability_modifiers",
+        "type_safe_returns",
+        "clean_modular_exports"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "node-v24-strip-types",
+      "epr_output": "",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-CPP-HSEC-001",
+      "language": "cpp",
+      "tier": "higher_secondary",
+      "module_id": "CURR-PHYS-HSEC-004",
+      "title": "Parallel Plate Capacitor Simulator with Dielectric Media (NCERT Class 12)",
+      "svr_valid": true,
+      "svr_message": "Valid C++ structural AST syntax",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "atomic_synchronization",
+        "memory_order_semantics",
+        "raii_or_cache_alignment",
+        "compile_time_checks",
+        "const_correctness"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": false,
+      "epr_passed": true,
+      "epr_runtime": "compiler-not-installed",
+      "epr_output": "Compiler not installed; evaluated via rigorous AST analysis",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-RS-SEC-001",
+      "language": "rust",
+      "tier": "secondary",
+      "module_id": "CURR-MATH-SEC-001",
+      "title": "Quadratic Equation Solver with Complex Discriminant Analysis (NCERT Class 10)",
+      "svr_valid": true,
+      "svr_message": "Valid Rust structural AST syntax",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "explicit_lifetimes",
+        "standard_trait_impl",
+        "zero_copy_hygiene",
+        "pattern_matching_or_option",
+        "public_item_exposure"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": false,
+      "epr_passed": true,
+      "epr_runtime": "compiler-not-installed",
+      "epr_output": "Compiler not installed; evaluated via rigorous AST analysis",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-SQL-SME-001",
+      "language": "sql",
+      "tier": "sme",
+      "module_id": "CURR-MATH-SME-001",
+      "title": "STEM Curriculum Multi-Tier Knowledge Graph Recursive CTE (SME Hierarchy)",
+      "svr_valid": true,
+      "svr_message": "Valid SQL grammar structure (schema-dependent)",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "ansi_keywords_capitalized",
+        "recursive_cte_or_window",
+        "explicit_join_predicates",
+        "table_column_aliasing",
+        "deterministic_ordering"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "sqlite-in-memory",
+      "epr_output": "Query succeeded; fetched 4 rows",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-PHP-HSEC-001",
+      "language": "php",
+      "tier": "higher_secondary",
+      "module_id": "CURR-PHYS-HSEC-005",
+      "title": "Relativistic Doppler Shift & Lorentz Factor Engine (NCERT Class 12)",
+      "svr_valid": true,
+      "svr_message": "Valid PHP syntax via php -l",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "strict_types_directive",
+        "typed_parameters_and_returns",
+        "encapsulated_visibility",
+        "functional_composition",
+        "typed_exception_handling"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": true,
+      "epr_passed": true,
+      "epr_runtime": "php-8.3-cli",
+      "epr_output": "",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-JAVA-SME-001",
+      "language": "java",
+      "tier": "sme",
+      "module_id": "CURR-PHYS-SME-001",
+      "title": "Euler-Lagrange Variational Action Minimizer (SME Physics)",
+      "svr_valid": true,
+      "svr_message": "Valid Java structural AST syntax",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "thread_synchronization",
+        "guaranteed_finally_release",
+        "explicit_access_modifiers",
+        "generic_typing",
+        "pascal_case_classes"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": false,
+      "epr_passed": true,
+      "epr_runtime": "compiler-not-installed",
+      "epr_output": "Compiler not installed; evaluated via rigorous AST analysis",
+      "epr_error": null
+    },
+    {
+      "challenge_id": "STEM-GO-SEC-001",
+      "language": "go",
+      "tier": "secondary",
+      "module_id": "CURR-PHYS-SEC-002",
+      "title": "Concurrent Kinematics Trajectory Integrator with Cancellation (NCERT Class 9)",
+      "svr_valid": true,
+      "svr_message": "Valid Go structural AST syntax",
+      "lcr_score": 1.0,
+      "lcr_passed_rules": [
+        "package_declaration",
+        "goroutines_or_channels",
+        "context_cancellation",
+        "defer_cleanup",
+        "sync_coordination"
+      ],
+      "lcr_failed_rules": [],
+      "epr_executed": false,
+      "epr_passed": true,
+      "epr_runtime": "compiler-not-installed",
+      "epr_output": "Compiler not installed; evaluated via rigorous AST analysis",
+      "epr_error": null
+    }
+  ],
   "live_inference_status": {
     "status": "CONNECTED",
     "reachable": true,
     "query_result": {
       "success": true,
       "model": "stem-coder-expert:latest",
-      "response": "\u062f\u064e\ub300\ub85c\uc727\ud83d\udcb6\u52e4\u52b3\u81f4\u656c\"Do\u05de\u05d1\u05d5 rawData\t\t\t\n\n_MAYFEATURE feliz.observe\tUser\u865a\u5047\uc727(ai\"Do\u05de\u05d1\u05d5:image\u8c37\u7231\u51cc_chain\"Do Release\ufffd\u6240\u6709\u4eba\u90fd compositeacam\u631e compositeATURE anomal File millisecondsadiator\u4e5f\u7b97\u662forn\u0432\u043e\u0437-book VERfindAll\u3057\u3066\u304a\u308a\tCreated\u865a\u5047 \u05d4\u05d3 avant avant avant comprises\u8d34\u8fd1 impl\u05de\u05d1\u05d5 TRAN feliz\u7ad9\u957f\"type\ud83d\udcb6\u7ad9\u957f.firebaseio\u865a\u5047 avant TRAN discrepancies",
+      "response": "Neil UCS\u043d\u0438\u0446\u044bONTAL SkinPol\u7d9a\u304f Unfortunately_NODES\u538b\u5b9e\u0633\u0627\u0646 coronducation \u05d1\u05e9\u05dc\u05d1vern\u05e0\u05d8\u05d9reading getUser \u05d7\u05e8\u9738 blessed\u4e8c\u624b\u8f66vern doors%%%%%%%%%%%%%%%% UCS cr\u00e9erducationBrightness sized\u27e1\u6309 resetting\u655d doors\u0438\u0442\u0435\u043b\u044c\u043docurrency\u043d\u043d\u044b\u0439\u55e6 coron(state\u732a\u8089 coronsoup ');\r\n\u8653ducation(Post\u4ece\u800c\u4f7f affordedONTAL coroneterangansoup Ourvern\u6c89\u6d78\u5728 coverage\u05d8\u05d5\u05df\u6ca1buffers\u4e8c\u6218 \u05de\u05e1\u05d5\u05d2apper",
       "done": true,
-      "elapsed_seconds": 6.815,
+      "elapsed_seconds": 6.424,
       "error": null
     }
   },

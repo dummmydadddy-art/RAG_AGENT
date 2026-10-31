@@ -253,30 +253,49 @@ class SftDatasetBuilder:
         self.backend = LocalSqliteRagBackend(str(self.db_path))
 
     def load_stem_records(self) -> List[Dict[str, Any]]:
-        """Load knowledge documents from rag_documents database."""
+        """Load knowledge documents from rag_documents database including stem_curriculum."""
         records: List[Dict[str, Any]] = []
-        with self.backend._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, collection, text, metadata
-                FROM rag_documents
-                WHERE collection IN ('stem_knowledge', 'knowledge')
-            """)
-            rows = cursor.fetchall()
-            for r in rows:
-                meta = json.loads(r["metadata"]) if r["metadata"] else {}
-                records.append({
-                    "id": r["id"],
-                    "collection": r["collection"],
-                    "text": r["text"],
-                    "title": meta.get("title", ""),
-                    "domain": meta.get("domain", ""),
-                    "tier": meta.get("tier", ""),
-                    "grade_level": meta.get("grade_level", ""),
-                    "concept": meta.get("concept", ""),
-                    "example_problem": meta.get("example_problem", ""),
-                    "solution_steps": meta.get("solution_steps", ""),
-                })
+        if self.db_path.exists():
+            try:
+                with self.backend._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT id, collection, text, metadata
+                        FROM rag_documents
+                        WHERE collection IN ('stem_knowledge', 'knowledge', 'stem_curriculum')
+                    """)
+                    rows = cursor.fetchall()
+                    for r in rows:
+                        meta = json.loads(r["metadata"]) if r["metadata"] else {}
+                        records.append({
+                            "id": r["id"],
+                            "collection": r["collection"],
+                            "text": r["text"],
+                            "title": meta.get("title", ""),
+                            "domain": meta.get("domain", ""),
+                            "tier": meta.get("tier", ""),
+                            "grade_level": meta.get("grade_level", ""),
+                            "concept": meta.get("concept", ""),
+                            "example_problem": meta.get("example_problem", ""),
+                            "solution_steps": meta.get("solution_steps", ""),
+                            "tags": meta.get("tags", []),
+                        })
+            except Exception as e:
+                logger.debug(f"rag_documents query from {self.db_path} skipped: {e}")
+
+        if not records:
+            stem_instruct_path = ROOT / "data" / "stem_instruct_dataset.json"
+            if stem_instruct_path.exists():
+                try:
+                    with open(stem_instruct_path, "r", encoding="utf-8") as f:
+                        records = json.load(f)
+                except Exception as e:
+                    logger.debug(f"Fallback loading {stem_instruct_path} failed: {e}")
+
+        if not records:
+            from scripts.ingest_stem_knowledge import CURATED_STEM_CORPUS
+            records = CURATED_STEM_CORPUS
+
         return records
 
     def load_polyglot_records(self, json_path: Optional[Path] = None) -> List[Dict[str, Any]]:
@@ -287,36 +306,113 @@ class SftDatasetBuilder:
                 return json.load(f)
         return []
 
-    def build_alpaca_dataset(self, records: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-        """Converts records to standard Alpaca instruction-tuning schema."""
+    @staticmethod
+    def cascade_truncate(
+        instruction: str,
+        input_text: str,
+        output_text: str,
+        max_char_limit: int = 4096,
+    ) -> Tuple[str, str, str]:
+        """
+        Symmetric cascade truncation enforcing sequence cutoff <= 1024 tokens (<= 4096 chars).
+        Truncation priority order:
+        1. Solution/Output text (down to minimum 200 chars)
+        2. Input/Concept text (down to minimum 100 chars)
+        3. Instruction/Problem text (down to minimum 50 chars)
+        4. Final strict safety clamp guaranteeing len(instruction) + len(input_text) + len(output_text) <= max_char_limit.
+        """
+        total = len(instruction) + len(input_text) + len(output_text)
+        if total <= max_char_limit:
+            return instruction, input_text, output_text
+
+        suffix = "\n... [truncated]"
+        suffix_len = len(suffix)
+        overflow = total - max_char_limit
+
+        # 1. Truncate output/solution first
+        if len(output_text) > 200:
+            cut = min(len(output_text) - 200, overflow + suffix_len)
+            output_text = output_text[:len(output_text) - cut] + suffix
+            total = len(instruction) + len(input_text) + len(output_text)
+
+        # 2. Truncate input/concept if still overflowing
+        if total > max_char_limit:
+            overflow = total - max_char_limit
+            if len(input_text) > 100:
+                cut = min(len(input_text) - 100, overflow + suffix_len)
+                input_text = input_text[:len(input_text) - cut] + suffix
+                total = len(instruction) + len(input_text) + len(output_text)
+
+        # 3. Truncate instruction if still overflowing
+        if total > max_char_limit:
+            overflow = total - max_char_limit
+            if len(instruction) > 50:
+                cut = min(len(instruction) - 50, overflow + suffix_len)
+                instruction = instruction[:len(instruction) - cut] + suffix
+                total = len(instruction) + len(input_text) + len(output_text)
+
+        # 4. Strict safety clamp if suffix or edge cases caused residual overflow
+        if total > max_char_limit:
+            excess = total - max_char_limit
+            if len(output_text) > excess:
+                output_text = output_text[:-excess]
+            elif len(input_text) > excess:
+                input_text = input_text[:-excess]
+            else:
+                instruction = instruction[:-excess]
+
+        return instruction, input_text, output_text
+
+    def build_alpaca_dataset(self, records: List[Any], max_tokens: int = 1024) -> List[Dict[str, str]]:
+        """Converts records (dicts or DTOs) to standard Alpaca instruction-tuning schema with token cutoff."""
         alpaca_samples: List[Dict[str, str]] = []
+        max_char_limit = min(4096, int(max_tokens * 4))
+
         for rec in records:
-            if "instruction" in rec and "input" in rec and "output" in rec:
-                # Already in Alpaca format (e.g. polyglot dataset)
+            if isinstance(rec, dict) and "instruction" in rec and "input" in rec and "output" in rec:
+                # Already in Alpaca format (e.g. polyglot dataset or pre-formatted curriculum)
+                inst = str(rec["instruction"])
+                inp = str(rec.get("input", ""))
+                out = str(rec["output"])
+                inst, inp, out = self.cascade_truncate(inst, inp, out, max_char_limit=max_char_limit)
                 alpaca_samples.append({
-                    "instruction": str(rec["instruction"]),
-                    "input": str(rec.get("input", "")),
-                    "output": str(rec["output"]),
+                    "instruction": inst,
+                    "input": inp,
+                    "output": out,
                 })
                 continue
 
-            problem = rec.get("example_problem") or rec.get("title")
-            concept = rec.get("concept") or ""
-            solution = rec.get("solution_steps") or rec.get("text")
+            # Handle dicts or CurriculumItem dataclass objects
+            if isinstance(rec, dict):
+                problem = rec.get("example_problem") or rec.get("title") or "Solve the STEM problem."
+                concept = rec.get("concept") or ""
+                solution = rec.get("solution_steps") or rec.get("text") or ""
+                domain_val = rec.get("domain", "STEM")
+                grade_str = str(rec.get("grade_level") or rec.get("tier") or "General")
+            else:
+                problem = getattr(rec, "example_problem", None) or getattr(rec, "title", "Solve the STEM problem.")
+                concept = getattr(rec, "concept", "")
+                solution = getattr(rec, "solution_steps", None) or getattr(rec, "text", "")
+                if hasattr(rec, "to_formatted_document") and not solution:
+                    solution = rec.to_formatted_document()
+                domain_val = getattr(rec, "domain", "STEM")
+                grade_str = str(getattr(rec, "grade_level", None) or getattr(rec, "tier", None) or "General")
 
-            domain_val = rec.get("domain", "STEM")
             if isinstance(domain_val, list):
                 domain_str = "/".join(str(d) for d in domain_val).upper()
             else:
                 domain_str = str(domain_val or "STEM").upper()
-
-            grade_str = str(rec.get("grade_level") or "General")
 
             instruction = (
                 f"Domain: {domain_str} | Level: {grade_str}\n"
                 f"Question / Challenge:\n{problem}"
             )
             input_text = f"Relevant Principles:\n{concept}" if concept else ""
+
+            # Enforce symmetric cascade truncation cutoff <= 1024 tokens (<= 4096 characters)
+            instruction, input_text, solution = self.cascade_truncate(
+                instruction, input_text, solution, max_char_limit=max_char_limit
+            )
 
             alpaca_samples.append({
                 "instruction": instruction,
@@ -325,11 +421,11 @@ class SftDatasetBuilder:
             })
         return alpaca_samples
 
-    def build_sharegpt_dataset(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def build_sharegpt_dataset(self, records: List[Any]) -> List[Dict[str, Any]]:
         """Converts records to multi-turn ShareGPT / ChatML format."""
         sharegpt_samples: List[Dict[str, Any]] = []
         for rec in records:
-            if "instruction" in rec and "output" in rec:
+            if isinstance(rec, dict) and "instruction" in rec and "output" in rec:
                 prompt_text = rec["instruction"]
                 if rec.get("input"):
                     prompt_text += f"\n\nContext / Input:\n{rec['input']}"
@@ -342,9 +438,16 @@ class SftDatasetBuilder:
                 })
                 continue
 
-            problem = rec.get("example_problem") or rec.get("title")
-            concept = rec.get("concept") or ""
-            solution = rec.get("solution_steps") or rec.get("text")
+            if isinstance(rec, dict):
+                problem = rec.get("example_problem") or rec.get("title") or "Solve the STEM problem."
+                concept = rec.get("concept") or ""
+                solution = rec.get("solution_steps") or rec.get("text") or ""
+            else:
+                problem = getattr(rec, "example_problem", None) or getattr(rec, "title", "Solve the STEM problem.")
+                concept = getattr(rec, "concept", "")
+                solution = getattr(rec, "solution_steps", None) or getattr(rec, "text", "")
+                if hasattr(rec, "to_formatted_document") and not solution:
+                    solution = rec.to_formatted_document()
 
             user_query = f"{problem}\n\nContext:\n{concept}" if concept else problem
             sharegpt_samples.append({
@@ -365,6 +468,48 @@ class SftDatasetBuilder:
                 StemQloraTrainer.ensure_polyglot_dataset(output_path)
                 with open(output_path, "r", encoding="utf-8") as f:
                     return len(json.load(f))
+        elif dataset_type in ("curriculum", "stem_curriculum"):
+            with self.backend._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, collection, text, metadata
+                    FROM rag_documents
+                    WHERE collection = 'stem_curriculum'
+                """)
+                rows = cursor.fetchall()
+                records = []
+                for r in rows:
+                    meta = json.loads(r["metadata"]) if r["metadata"] else {}
+                    records.append({
+                        "id": r["id"],
+                        "collection": r["collection"],
+                        "text": r["text"],
+                        "title": meta.get("title", ""),
+                        "domain": meta.get("domain", ""),
+                        "tier": meta.get("tier", ""),
+                        "grade_level": meta.get("grade_level", ""),
+                        "concept": meta.get("concept", ""),
+                        "example_problem": meta.get("example_problem", ""),
+                        "solution_steps": meta.get("solution_steps", ""),
+                        "tags": meta.get("tags", []),
+                    })
+            if not records:
+                from scripts.ingest_stem_curriculum import load_curriculum_dataset
+                items = load_curriculum_dataset()
+                records = [
+                    {
+                        "id": it.id,
+                        "title": it.title,
+                        "domain": it.domain,
+                        "tier": it.tier,
+                        "grade_level": it.grade_level,
+                        "concept": it.concept,
+                        "example_problem": it.example_problem,
+                        "solution_steps": it.solution_steps,
+                        "tags": it.tags,
+                    }
+                    for it in items
+                ]
         else:
             records = self.load_stem_records()
             if not records:
@@ -495,8 +640,8 @@ ddp_timeout: 180000000
 
     @staticmethod
     def generate_modelfile(
-        gguf_path: str = "./stem-expert-q4_k_m.gguf",
-        model_name: str = "stem-expert",
+        gguf_path: str = "./stem-coder-expert-q4_k_m.gguf",
+        model_name: str = "stem-coder-expert",
     ) -> str:
         """Generates Ollama Modelfile for 4-bit quantized GGUF."""
         return f"""# Modelfile for {model_name}
@@ -510,7 +655,15 @@ PARAMETER repeat_penalty 1.1
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|im_start|>"
 
-# System Prompt
+# ChatML Template
+TEMPLATE \"\"\"{{{{ if .System }}}}<|im_start|>system
+{{{{ .System }}}}<|im_end|>
+{{{{ end }}}}{{{{ if .Prompt }}}}<|im_start|>user
+{{{{ .Prompt }}}}<|im_end|>
+{{{{ end }}}}<|im_start|>assistant
+{{{{ .Response }}}}<|im_end|>\"\"\"
+
+# Polyglot STEM Expert System Prompt
 SYSTEM \"\"\"You are an elite STEM Subject Matter Expert and polyglot software engineer capable of synthesizing, refactoring, and verifying correct and efficient code across Python, TypeScript, C++, Java, Rust, Go, PHP, and SQL with rigorous step-by-step reasoning, test suites, and algorithmic complexity analysis.\"\"\"
 """
 
@@ -625,6 +778,7 @@ class StemQloraTrainer:
         learning_rate: float = 2.0e-4,
         num_train_epochs: float = 3.0,
         ollama_url: str = "http://localhost:11434",
+        include_stem: bool = True,
     ) -> None:
         self.base_model = base_model
         self.dataset_path = dataset_path or (ROOT / "data" / "polyglot_instruct_dataset.json")
@@ -638,7 +792,9 @@ class StemQloraTrainer:
         self.lr = learning_rate
         self.epochs = num_train_epochs
         self.ollama_url = ollama_url
+        self.include_stem = include_stem
         self.evictor = VramEvictor(ollama_url=ollama_url)
+        self.dataset_builder = SftDatasetBuilder()
 
     @staticmethod
     def ensure_polyglot_dataset(target_path: Path) -> Path:
@@ -674,12 +830,67 @@ class StemQloraTrainer:
 
         return data
 
+    def load_stem_dataset(self) -> List[Dict[str, Any]]:
+        """Loads verified STEM curriculum records formatted as Alpaca instruction samples."""
+        stem_instruct_file = ROOT / "data" / "stem_instruct_dataset.json"
+        if stem_instruct_file.exists():
+            try:
+                with open(stem_instruct_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and len(data) > 0:
+                        return self.dataset_builder.build_alpaca_dataset(data, max_tokens=self.cutoff_len)
+            except Exception as e:
+                logger.warning(f"Failed loading {stem_instruct_file}: {e}")
+
+        # Fallback to DB query
+        stem_records = self.dataset_builder.load_stem_records()
+        if stem_records:
+            return self.dataset_builder.build_alpaca_dataset(stem_records, max_tokens=self.cutoff_len)
+
+        # Fallback to raw expanded curriculum
+        curriculum_expanded = ROOT / "data" / "stem_curriculum_expanded.json"
+        if curriculum_expanded.exists():
+            try:
+                with open(curriculum_expanded, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                    return self.dataset_builder.build_alpaca_dataset(raw, max_tokens=self.cutoff_len)
+            except Exception as e:
+                logger.warning(f"Failed loading {curriculum_expanded}: {e}")
+
+        return []
+
+    def load_training_dataset(self) -> List[Dict[str, Any]]:
+        """
+        Loads the combined SFT training dataset ingesting both polyglot coding challenges
+        and newly curated STEM curriculum records.
+        """
+        default_polyglot = ROOT / "data" / "polyglot_instruct_dataset.json"
+        if self.dataset_path.resolve() != default_polyglot.resolve() and self.dataset_path.exists():
+            with open(self.dataset_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+
+        polyglot_samples = self.load_polyglot_dataset()
+        if not self.include_stem:
+            return polyglot_samples
+
+        stem_samples = self.load_stem_dataset()
+        unified = list(polyglot_samples)
+        for s in stem_samples:
+            unified.append({
+                "instruction": s["instruction"],
+                "input": s.get("input", ""),
+                "output": s["output"],
+            })
+        return unified
+
     def run_training(self, dry_run: bool = False) -> Dict[str, Any]:
         """
         Executes fine-tuning workflow:
         1. Pre-flight VRAM eviction (GPU processes + Ollama keep_alive: 0 + PyTorch cache).
-        2. Validates peak VRAM memory ceiling <= 3.8 GB.
-        3. Loads polyglot instruction dataset.
+        2. Validates peak VRAM memory ceiling <= 3.8 GB and 0 MiB baseline.
+        3. Loads polyglot & STEM instruction dataset.
         4. Simulates/runs step-by-step training loop with gradient accumulation.
         5. Exports LoRA adapter weights (safetensors) and tokenizer configs.
         """
@@ -689,6 +900,7 @@ class StemQloraTrainer:
         evicted_processes = self.evictor.evict_gpu_processes()
         evicted_models = self.evictor.evict_ollama_models()
         torch_info = self.evictor.evict_torch_cuda()
+        assert torch_info.get("vram_baseline_verified", True), "GPU VRAM baseline is non-zero before training"
 
         # 2. VRAM Bound Calculation
         vram_bounds = QloraConfigGenerator.calculate_peak_vram_bounds(
@@ -699,7 +911,7 @@ class StemQloraTrainer:
         peak_vram_recorded = vram_bounds["peak_vram_mib"]
 
         # 3. Load Dataset
-        samples = self.load_polyglot_dataset()
+        samples = self.load_training_dataset()
         num_samples = len(samples)
 
         # 4. Training Loop Execution with Genuine PyTorch Autograd & AdamW
@@ -1069,8 +1281,14 @@ def run_stem_training_pipeline(
         output_path=str(output_dir / "merged_checkpoint"),
     )
     merge_script_file = output_dir / "merge_cpu.py"
-    with open(merge_script_file, "w", encoding="utf-8") as f:
-        f.write(cpu_merge_script)
+    # Strict scaffolding guard: protect production models/merge_cpu.py from template stub overwrite
+    if not merge_script_file.exists():
+        real_merge_cpu = ROOT / "models" / "merge_cpu.py"
+        if real_merge_cpu.exists() and output_dir.resolve() == (ROOT / "models").resolve():
+            logger.info("Preserving existing production models/merge_cpu.py")
+        else:
+            with open(merge_script_file, "w", encoding="utf-8") as f:
+                f.write(cpu_merge_script)
 
     # 5. Fine-Tuning Execution & Artifact Export
     trainer = StemQloraTrainer(
@@ -1078,6 +1296,7 @@ def run_stem_training_pipeline(
         dataset_path=polyglot_file if use_polyglot else sft_file,
         adapter_output_dir=output_dir / "lora_adapters" / target_model_name,
         ollama_url=ollama_url,
+        include_stem=True,
     )
     training_result = trainer.run_training(dry_run=dry_run)
 
