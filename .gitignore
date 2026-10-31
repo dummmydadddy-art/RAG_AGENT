@@ -31,8 +31,15 @@ team/
 backend/api_debug.log
 backend/storage/*.sqlite
 backend/storage/*.sqlite-journal
+backend/storage/*.sqlite-wal
+backend/storage/*.sqlite-shm
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 *.db
+
+build/
+
 
 .serena/
 

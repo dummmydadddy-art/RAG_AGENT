@@ -7,7 +7,7 @@ import { ThemeManager } from './theme.js';
 import { SidebarManager } from './sidebar.js';
 import { MarkdownRenderer } from './markdown.js';
 import { enhanceCodeBlocks } from './code_runner.js';
-import { TelemetryManager } from './telemetry.js';
+import { TelemetryManager, LearningWidgetController } from './telemetry.js';
 import { streamChatCompletion } from './sse_client.js';
 
 class App {
@@ -15,6 +15,7 @@ class App {
     this.themeManager = new ThemeManager();
     this.markdownRenderer = new MarkdownRenderer();
     this.telemetryManager = new TelemetryManager();
+    this.learningWidget = new LearningWidgetController();
 
     this.activeConversationId = this.generateId();
     this.activeAbortController = null;

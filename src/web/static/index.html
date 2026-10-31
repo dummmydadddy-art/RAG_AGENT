@@ -80,6 +80,19 @@
             <span class="model-tag">4-Bit QLoRA</span>
           </div>
         </div>
+        <!-- Autonomous Self-Learning Header Widget -->
+        <div class="learning-widget" id="learning-widget" data-testid="learning-widget">
+          <div class="learning-badge" id="learning-badge">
+            <span class="learning-dot idle" id="learning-dot" title="Learning status"></span>
+            <span class="learning-label" id="learning-status-label">Learning: Idle</span>
+            <span class="learning-pill" id="learning-cycles-pill" title="Completed cycles">#0</span>
+            <span class="learning-pill lessons-pill" id="learning-lessons-pill" title="Harvested lessons">0 Lessons</span>
+          </div>
+          <button class="learning-toggle-btn start" id="learning-toggle-btn" title="Start / Stop Autonomous Self-Learning">
+            <span class="btn-icon" id="learning-btn-icon">▶</span>
+            <span class="btn-text" id="learning-btn-text">Start</span>
+          </button>
+        </div>
         <div class="chat-header-actions">
           <button class="header-action-btn" id="clear-chat-btn" title="Clear current messages">Clear</button>
           <button class="header-action-btn" id="export-chat-btn" title="Export conversation to Markdown">Export</button>

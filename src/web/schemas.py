@@ -247,3 +247,34 @@ class HealthResponse(BaseModel):
     timestamp: str
     services: Dict[str, Any]
     hardware_budget: Dict[str, Any]
+
+
+# ============================================================================
+# 6. AUTONOMOUS SELF-LEARNING SCHEMAS
+# ============================================================================
+
+class LearningStatusResponse(BaseModel):
+    """Status report for the autonomous self-learning daemon."""
+    status: str = Field(..., description="'Running', 'Stopped', or 'Idle'")
+    pid: Optional[int] = Field(default=None, description="Operating system PID of learning daemon")
+    uptime_seconds: float = Field(default=0.0, description="Process uptime in seconds")
+    cycle_count: int = Field(default=0, description="Completed self-play cycles")
+    total_lessons: int = Field(default=0, description="Total harvested lessons in vectors.sqlite")
+    last_cycle_timestamp: Optional[str] = Field(default=None, description="ISO timestamp of last activity")
+    details: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Diagnostic telemetry")
+
+
+class LearningStartRequest(BaseModel):
+    """Payload to start the autonomous self-learning loop."""
+    interval_seconds: float = Field(default=15.0, ge=1.0, le=3600.0, description="Sleep interval between cycles")
+    max_iterations: int = Field(default=0, ge=0, description="Maximum iterations (0 for infinite loop)")
+
+
+class LearningActionResponse(BaseModel):
+    """Response payload for start/stop lifecycle commands."""
+    status: str = Field(
+        ...,
+        description="Action outcome: 'started', 'already_running', 'stopped', 'not_running', or 'error'"
+    )
+    pid: Optional[int] = Field(default=None, description="Process ID")
+    message: str = Field(..., description="Human-readable status summary")

@@ -26,6 +26,7 @@ from src.web.routes.chat import router as chat_router
 from src.web.routes.conversations import router as conversations_router
 from src.web.routes.execute import router as execute_router
 from src.web.routes.health import router as health_router
+from src.web.routes.learning import router as learning_router
 from src.web.routes.lessons import router as lessons_router
 
 logger = logging.getLogger("web.app")
@@ -69,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(lessons_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
     app.include_router(health_router, prefix="/api")
+    app.include_router(learning_router, prefix="/api")
 
     # 3. Mount Static Files for Frontend SPA
     static_path = cfg.static_dir

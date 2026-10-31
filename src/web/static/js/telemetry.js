@@ -441,3 +441,107 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/**
+ * Controller for Autonomous Self-Learning Header Widget.
+ * Handles polling /api/learning/status every 3s, optimistic toggles, and state sync.
+ */
+export class LearningWidgetController {
+  constructor() {
+    this.widgetEl = document.getElementById('learning-widget');
+    this.dotEl = document.getElementById('learning-dot');
+    this.labelEl = document.getElementById('learning-status-label');
+    this.cyclesEl = document.getElementById('learning-cycles-pill');
+    this.lessonsEl = document.getElementById('learning-lessons-pill');
+    this.toggleBtn = document.getElementById('learning-toggle-btn');
+    this.btnIcon = document.getElementById('learning-btn-icon');
+    this.btnText = document.getElementById('learning-btn-text');
+
+    this.isRunning = false;
+    this.pollInterval = null;
+
+    this.init();
+  }
+
+  init() {
+    if (!this.toggleBtn) return;
+    this.toggleBtn.addEventListener('click', () => this.handleToggle());
+    this.pollStatus();
+    this.pollInterval = setInterval(() => this.pollStatus(), 3000);
+  }
+
+  async pollStatus() {
+    try {
+      const res = await fetch('/api/learning/status');
+      if (res.ok) {
+        const data = await res.json();
+        this.renderState(data);
+      }
+    } catch (err) {
+      console.warn('Learning status poll failed:', err);
+    }
+  }
+
+  renderState(data) {
+    this.isRunning = data.status === 'Running';
+
+    if (this.dotEl) {
+      this.dotEl.className = `learning-dot ${(data.status || 'idle').toLowerCase()}`;
+      this.dotEl.title = `Autonomous Self-Learning: ${data.status}${data.pid ? ` (PID: ${data.pid})` : ''}`;
+    }
+    if (this.labelEl) {
+      this.labelEl.textContent = `Learning: ${data.status}`;
+    }
+    if (this.cyclesEl) {
+      this.cyclesEl.textContent = `#${data.cycle_count || 0}`;
+      this.cyclesEl.title = `Completed cycles: ${data.cycle_count || 0}`;
+    }
+    if (this.lessonsEl) {
+      this.lessonsEl.textContent = `${data.total_lessons || 0} Lessons`;
+      this.lessonsEl.title = `Total harvested lessons: ${data.total_lessons || 0}`;
+    }
+
+    if (this.toggleBtn) {
+      this.toggleBtn.disabled = false;
+      if (this.isRunning) {
+        this.toggleBtn.className = 'learning-toggle-btn stop';
+        if (this.btnIcon) this.btnIcon.textContent = '⏹';
+        if (this.btnText) this.btnText.textContent = 'Stop';
+        this.toggleBtn.title = 'Stop Autonomous Self-Learning Daemon';
+      } else {
+        this.toggleBtn.className = 'learning-toggle-btn start';
+        if (this.btnIcon) this.btnIcon.textContent = '▶';
+        if (this.btnText) this.btnText.textContent = 'Start';
+        this.toggleBtn.title = 'Start Autonomous Self-Learning Daemon';
+      }
+    }
+  }
+
+  async handleToggle() {
+    if (!this.toggleBtn || this.toggleBtn.disabled) return;
+    this.toggleBtn.disabled = true;
+    const targetAction = this.isRunning ? 'stop' : 'start';
+    if (this.btnText) {
+      this.btnText.textContent = this.isRunning ? 'Stopping...' : 'Starting...';
+    }
+
+    try {
+      const res = await fetch(`/api/learning/${targetAction}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: targetAction === 'start' ? JSON.stringify({ interval_seconds: 15.0 }) : JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.message || `HTTP ${res.status}`);
+      }
+      await this.pollStatus();
+    } catch (err) {
+      console.error(`Failed to ${targetAction} learning loop:`, err);
+      alert(`Could not ${targetAction} self-learning loop: ${err.message}`);
+      await this.pollStatus();
+    } finally {
+      if (this.toggleBtn) this.toggleBtn.disabled = false;
+    }
+  }
+}
