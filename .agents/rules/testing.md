@@ -19,3 +19,12 @@ This rule governs test authoring, test execution, and verification invariants ac
 ## 4. Windows Subprocess & Shell Isolation
 - Never execute unquoted shell commands containing nested quotes in PowerShell.
 - When spawning Python subprocesses from within MCP server tools on Windows, **always specify `stdin=subprocess.DEVNULL`**. Failure to do so causes child interpreters to inherit the parent JSON-RPC stdin pipe, resulting in silent timeouts.
+
+## 5. Polyglot Sandbox Execution Integrity
+- In polyglot sandboxes, never simulate execution or mock successful passes when a host compiler (e.g., `rustc`, `g++`, `clang`) is missing.
+- Always perform genuine host checks and return an honest diagnostic indicating the missing toolchain.
+
+## 6. Database Storage Isolation & Concurrency Invariant
+- User-facing chat histories, UI session telemetry, and external write streams must never share write locks with background autonomous learning daemons.
+- Maintain dedicated SQLite storage paths (e.g., `backend/storage/chat_history.sqlite`) segregated from the vector knowledge database (`backend/storage/vectors.sqlite`).
+
