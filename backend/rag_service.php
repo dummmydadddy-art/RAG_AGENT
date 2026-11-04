@@ -1727,6 +1727,14 @@ class RagService {
     }
 
     public static function unpackVector(string $blob): array {
+        if (strlen($blob) === 776) {
+            $header = unpack('fmin/fmax', substr($blob, 0, 8));
+            $min = (float)($header['min'] ?? 0.0);
+            $max = (float)($header['max'] ?? 1.0);
+            $spread = ($max - $min) > 1e-12 ? ($max - $min) : 1.0;
+            $u8 = array_values(unpack('C*', substr($blob, 8)));
+            return array_map(fn($b) => $min + ($b / 255.0) * $spread, $u8);
+        }
         return array_values(unpack('f*', $blob));
     }
 
