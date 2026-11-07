@@ -35,6 +35,8 @@ backend/storage/*.sqlite
 backend/storage/*.sqlite-journal
 backend/storage/*.sqlite-wal
 backend/storage/*.sqlite-shm
+backend/storage/.installed.json
+backend/storage/desktop_profile/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

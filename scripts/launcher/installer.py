@@ -30,7 +30,8 @@ def get_installation_marker_path(workspace_root: Path) -> Path:
 def is_installed(workspace_root: Path) -> bool:
     """
     Checks if the workspace has already completed full environment installation.
-    Verifies that the marker file exists, contains installed=True, and .venv is intact.
+    Verifies that the marker file exists, contains installed=True, .venv is intact,
+    and the recorded workspace root matches the current workspace location.
     """
     marker = get_installation_marker_path(workspace_root)
     if not marker.exists():
@@ -42,7 +43,18 @@ def is_installed(workspace_root: Path) -> bool:
 
     try:
         data = json.loads(marker.read_text(encoding="utf-8"))
-        return bool(data.get("installed", False))
+        if not bool(data.get("installed", False)):
+            return False
+
+        recorded_root = data.get("workspace_root")
+        if recorded_root:
+            try:
+                if Path(recorded_root).resolve() != workspace_root.resolve():
+                    return False
+            except Exception:
+                return False
+
+        return True
     except Exception:
         return False
 

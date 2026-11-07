@@ -11,6 +11,7 @@ Main CLI Entrypoint for RAG-Agent Windows Launcher:
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 import time
 import urllib.request
@@ -223,7 +224,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not args.no_shortcut:
         print("\n[*] Verifying desktop integration and shortcuts...")
         try:
-            ensure_desktop_and_start_menu_shortcuts(workspace_root)
+            ensure_desktop_and_start_menu_shortcuts(
+                workspace_root, force=args.force_install
+            )
         except Exception as e:
             print(f"[!] Warning: Shortcut verification encountered an issue: {e}", file=sys.stderr)
 
@@ -349,6 +352,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             if app_proc:
                 supervisor.processes["desktop_window"] = app_proc
+                supervisor.spawned_pids.add(app_proc.pid)
+                supervisor.assign_process_to_job(app_proc)
         else:
             print("[*] Opening default web browser...")
             try:
@@ -364,18 +369,34 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(" RAG-Agent is running. Press Ctrl+C in this console to terminate.")
     print("=" * 64)
 
+    exit_code = 0
     try:
         while True:
             if app_proc and app_proc.poll() is not None:
                 print("\n[*] Native desktop app window closed by user. Terminating services...")
                 break
+            # Fail fast if critical background services crash prematurely
+            web_proc = supervisor.processes.get("web_gateway")
+            if web_proc:
+                rc = web_proc.poll()
+                if rc is not None:
+                    print(f"\n[ERROR] Web Gateway terminated unexpectedly with exit code {rc}. Terminating services...", file=sys.stderr)
+                    exit_code = 1
+                    break
+            php_proc = supervisor.processes.get("php_backend")
+            if php_proc:
+                rc = php_proc.poll()
+                if rc is not None:
+                    print(f"\n[ERROR] PHP backend terminated unexpectedly with exit code {rc}. Terminating services...", file=sys.stderr)
+                    exit_code = 1
+                    break
             time.sleep(0.5)
     except KeyboardInterrupt:
         print("\n[*] Received shutdown signal.")
     finally:
         supervisor.shutdown()
 
-    return 0
+    return exit_code
 
 
 
