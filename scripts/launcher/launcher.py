@@ -24,14 +24,20 @@ _REPO_ROOT = _CURRENT_FILE.parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from scripts.launcher.desktop_window import launch_desktop_window
 from scripts.launcher.installer import (
     check_bytecode_imports,
+    clear_installation_marker,
     ensure_environment,
     find_venv_python,
+    is_installed,
+    mark_as_installed,
 )
 from scripts.launcher.model_checker import ensure_ollama_and_models, probe_ollama_daemon
 from scripts.launcher.preflight import run_all_preflight_checks
+from scripts.launcher.shortcut import ensure_desktop_and_start_menu_shortcuts
 from scripts.launcher.supervisor import MultiServiceSupervisor
+
 
 
 def get_workspace_root(override_path: Optional[str] = None) -> Path:
@@ -109,7 +115,30 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=11434,
         help="Local port for Ollama Daemon (default: 11434)",
     )
+    parser.add_argument(
+        "--force-install",
+        action="store_true",
+        help="Force full environment re-creation and dependency installation even if already installed",
+    )
+    parser.add_argument(
+        "--no-shortcut",
+        action="store_true",
+        help="Suppress automatic Desktop and Start Menu shortcut creation",
+    )
+    parser.add_argument(
+        "--window-mode",
+        choices=["app", "browser"],
+        default="app",
+        help="Application window mode: 'app' for standalone frameless desktop window, 'browser' for standard web browser (default: app)",
+    )
+    parser.add_argument(
+        "--window-size",
+        type=str,
+        default="1300,880",
+        help="Window dimensions WIDTH,HEIGHT for desktop app mode (default: 1300,880)",
+    )
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
+
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -128,6 +157,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     print(f"[*] Workspace Root: {workspace_root}")
+
+    # Handle explicit reinstallation request
+    if args.force_install:
+        print("[*] Force-install requested: clearing installation marker...")
+        clear_installation_marker(workspace_root)
+
+    already_installed = is_installed(workspace_root)
 
     # 2. Run Pre-flight Checks
     print("[*] Running Pre-Flight Checks...")
@@ -155,15 +191,43 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("\n[OK] All check-only diagnostics completed successfully.")
         return 0
 
-    # 3. Virtual Environment Bootstrapping
-    print("\n[*] Ensuring Python virtual environment and dependencies...")
-    try:
-        venv_python = ensure_environment(workspace_root, preflight.python_path)
-    except Exception as e:
-        print(f"[ERROR] Environment bootstrapping failed: {e}", file=sys.stderr)
-        return 1
+    # 3. Virtual Environment Bootstrapping / Fast Launch
+    if already_installed:
+        print("\n[*] Fast Launch: Verified existing installation.")
+        print("    Skipping dependency installation checks for instant launch.")
+        venv_python = find_venv_python(workspace_root)
+        if not venv_python or not venv_python.exists():
+            print("[!] Virtual environment binary missing; bootstrapping new environment...")
+            venv_python = ensure_environment(workspace_root, preflight.python_path)
+    else:
+        print("\n[*] Initial Setup: Bootstrapping Python virtual environment and dependencies...")
+        try:
+            venv_python = ensure_environment(
+                workspace_root, preflight.python_path, force_install=args.force_install
+            )
+        except Exception as e:
+            print(f"[ERROR] Environment bootstrapping failed: {e}", file=sys.stderr)
+            return 1
 
-    # 4. Ollama & Model Readiness
+        # Persist installation marker for instant future starts
+        mark_as_installed(
+            workspace_root,
+            {
+                "php_path": str(preflight.php_path) if preflight.php_path else "",
+                "ollama_path": str(preflight.ollama_path) if preflight.ollama_path else "",
+                "venv_python": str(venv_python),
+            },
+        )
+
+    # 4. Desktop Integration & Shortcut Verification
+    if not args.no_shortcut:
+        print("\n[*] Verifying desktop integration and shortcuts...")
+        try:
+            ensure_desktop_and_start_menu_shortcuts(workspace_root)
+        except Exception as e:
+            print(f"[!] Warning: Shortcut verification encountered an issue: {e}", file=sys.stderr)
+
+    # 5. Ollama & Model Readiness
     print("\n[*] Ensuring Ollama daemon and model availability...")
     try:
         model_info = ensure_ollama_and_models(
@@ -180,7 +244,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[+] Active Polyglot Coding Model: {model_info.active_coder_model}")
     print(f"[+] Embedding Model Available: {model_info.has_embedding_model}")
 
-    # 5. Multi-Service Supervision
+    # 6. Multi-Service Supervision
     print("\n[*] Starting Multi-Service Supervisor...")
     supervisor = MultiServiceSupervisor(workspace_root)
 
@@ -228,7 +292,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         ]
         supervisor.spawn_service("web_gateway", uvicorn_cmd, cwd=workspace_root, env=env)
 
-    # 6. Health Probing & Browser Auto-Launch
+    # 7. Health Probing & Desktop Window Launch
     health_url = f"http://127.0.0.1:{args.port_web}/api/health"
     web_url = f"http://127.0.0.1:{args.port_web}"
     print(f"\n[*] Probing gateway health on {health_url}...")
@@ -266,26 +330,53 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     print(f"\n[+] RAG-Agent is live and operational at {web_url}!")
+    app_proc: Optional[subprocess.Popen] = None
     if not args.no_browser:
-        print("[*] Opening default web browser...")
-        try:
-            webbrowser.open(web_url)
-        except Exception as e:
-            print(f"[!] Could not launch browser automatically: {e}")
+        if args.window_mode == "app":
+            try:
+                w_str, h_str = args.window_size.split(",")
+                win_w, win_h = int(w_str.strip()), int(h_str.strip())
+            except Exception:
+                win_w, win_h = 1300, 880
+
+            app_proc = launch_desktop_window(
+                url=web_url,
+                workspace_root=workspace_root,
+                width=win_w,
+                height=win_h,
+                app_id="rag-agent",
+                prefer_browser=False,
+            )
+            if app_proc:
+                supervisor.processes["desktop_window"] = app_proc
+        else:
+            print("[*] Opening default web browser...")
+            try:
+                webbrowser.open(web_url)
+            except Exception as e:
+                print(f"[!] Could not launch browser automatically: {e}")
 
     print("\n" + "=" * 64)
-    print(" RAG-Agent is running. Press Ctrl+C in this console to terminate.")
+    if app_proc:
+        print(" RAG-Agent is running in standalone desktop window mode.")
+        print(" Close the application window or press Ctrl+C in this console to terminate.")
+    else:
+        print(" RAG-Agent is running. Press Ctrl+C in this console to terminate.")
     print("=" * 64)
 
     try:
         while True:
-            time.sleep(1.0)
+            if app_proc and app_proc.poll() is not None:
+                print("\n[*] Native desktop app window closed by user. Terminating services...")
+                break
+            time.sleep(0.5)
     except KeyboardInterrupt:
         print("\n[*] Received shutdown signal.")
     finally:
         supervisor.shutdown()
 
     return 0
+
 
 
 if __name__ == "__main__":

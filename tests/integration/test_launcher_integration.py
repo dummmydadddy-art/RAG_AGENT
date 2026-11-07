@@ -91,3 +91,49 @@ def test_launcher_cli_invalid_workspace_path():
     )
     assert res.returncode != 0
     assert "does not exist" in res.stderr or "does not exist" in res.stdout
+
+
+def test_launcher_cli_desktop_flags_in_help():
+    """Validates new desktop integration flags are visible in --help output."""
+    res = subprocess.run(
+        [str(PYTHON_EXE), str(LAUNCHER_SCRIPT), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        cwd=str(REPO_ROOT),
+    )
+    assert res.returncode == 0
+    assert "--force-install" in res.stdout
+    assert "--no-shortcut" in res.stdout
+    assert "--window-mode" in res.stdout
+    assert "--window-size" in res.stdout
+
+
+def test_compiled_exe_help_and_check_only():
+    """Validates the compiled dist/RAG-Agent-Launcher.exe binary runs help and check-only."""
+    dist_exe = REPO_ROOT / "dist" / "RAG-Agent-Launcher.exe"
+    if not dist_exe.exists():
+        pytest.skip("dist/RAG-Agent-Launcher.exe not compiled yet")
+
+    res_help = subprocess.run(
+        [str(dist_exe), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        cwd=str(REPO_ROOT),
+    )
+    assert res_help.returncode == 0
+    assert "--window-mode" in res_help.stdout
+    assert "--force-install" in res_help.stdout
+
+    res_check = subprocess.run(
+        [str(dist_exe), "--check-only"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(REPO_ROOT),
+    )
+    assert res_check.returncode == 0
+    assert "Pre-Flight Diagnostics" in res_check.stdout
+    assert "Check-only mode requested" in res_check.stdout
+

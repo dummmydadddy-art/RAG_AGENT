@@ -530,12 +530,30 @@ def test_parse_args_defaults():
     assert args.workspace is None
     assert args.port_web == 8080
     assert args.port_php == 8000
+    assert args.force_install is False
+    assert args.no_shortcut is False
+    assert args.window_mode == "app"
+    assert args.window_size == "1300,880"
 
 
 def test_parse_args_check_only_and_custom_ports():
     """Parses custom flags correctly."""
-    args = parse_args(["--check-only", "--no-browser", "--port-web", "9090", "--port-php", "9000"])
+    args = parse_args([
+        "--check-only",
+        "--no-browser",
+        "--port-web", "9090",
+        "--port-php", "9000",
+        "--force-install",
+        "--no-shortcut",
+        "--window-mode", "browser",
+        "--window-size", "1920,1080",
+    ])
     assert args.check_only is True
     assert args.no_browser is True
     assert args.port_web == 9090
     assert args.port_php == 9000
+    assert args.force_install is True
+    assert args.no_shortcut is True
+    assert args.window_mode == "browser"
+    assert args.window_size == "1920,1080"
+

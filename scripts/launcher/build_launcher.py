@@ -95,6 +95,10 @@ def build_executable(workspace_root: Path, venv_python: Path) -> Path:
         "--hidden-import",
         "ctypes.wintypes",
         "--hidden-import",
+        "json",
+        "--hidden-import",
+        "datetime",
+        "--hidden-import",
         "scripts.launcher.preflight",
         "--hidden-import",
         "scripts.launcher.installer",
@@ -103,11 +107,26 @@ def build_executable(workspace_root: Path, venv_python: Path) -> Path:
         "--hidden-import",
         "scripts.launcher.supervisor",
         "--hidden-import",
+        "scripts.launcher.desktop_window",
+        "--hidden-import",
+        "scripts.launcher.shortcut",
+        "--hidden-import",
         "scripts.launcher.launcher",
         "--hidden-import",
         "scripts.security.windows_sandbox",
-        str(launcher_entrypoint),
     ]
+
+    icon_path = workspace_root / "assets" / "icon.ico"
+    if icon_path.exists():
+        pyinstaller_args.extend([
+            "--icon",
+            str(icon_path),
+            "--add-data",
+            f"{icon_path};assets",
+        ])
+
+    pyinstaller_args.append(str(launcher_entrypoint))
+
 
     print(f"[*] Compiling {launcher_entrypoint.name} via PyInstaller...")
     start_time = time.time()

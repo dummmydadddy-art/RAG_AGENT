@@ -10,12 +10,75 @@ Virtual environment bootstrapping and dependency management for RAG-Agent:
 
 from __future__ import annotations
 
+import datetime
+import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from scripts.launcher.preflight import detect_python
+
+INSTALL_MARKER_REL_PATH = Path("backend") / "storage" / ".installed.json"
+
+
+def get_installation_marker_path(workspace_root: Path) -> Path:
+    """Returns the path to the installation marker file."""
+    return workspace_root / INSTALL_MARKER_REL_PATH
+
+
+def is_installed(workspace_root: Path) -> bool:
+    """
+    Checks if the workspace has already completed full environment installation.
+    Verifies that the marker file exists, contains installed=True, and .venv is intact.
+    """
+    marker = get_installation_marker_path(workspace_root)
+    if not marker.exists():
+        return False
+
+    venv_py = find_venv_python(workspace_root)
+    if not venv_py or not venv_py.exists():
+        return False
+
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        return bool(data.get("installed", False))
+    except Exception:
+        return False
+
+
+def mark_as_installed(
+    workspace_root: Path, details: Optional[Dict[str, Any]] = None
+) -> Path:
+    """
+    Persists an installation marker to backend/storage/.installed.json.
+    Records environment and dependency setup state for instant subsequent launches.
+    """
+    marker = get_installation_marker_path(workspace_root)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+
+    payload: Dict[str, Any] = {
+        "installed": True,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "workspace_root": str(workspace_root.resolve()),
+        "python_version": sys.version,
+    }
+    if details:
+        payload.update(details)
+
+    marker.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return marker
+
+
+def clear_installation_marker(workspace_root: Path) -> None:
+    """Removes the installation marker to force a full reinstallation on next run."""
+    marker = get_installation_marker_path(workspace_root)
+    if marker.exists():
+        try:
+            marker.unlink()
+        except Exception:
+            pass
+
 
 REQUIRED_MODULES = [
     "fastapi",
