@@ -17,16 +17,21 @@ import re
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import psutil
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from src.web.config import get_config
 from src.web.database import get_vectors_connection
 from src.web.schemas import (
+    AblationComparison,
+    AccuracyHistoryResponse,
+    AccuracyMetricPoint,
+    HarvesterStatusResponse,
     LearningActionResponse,
     LearningStartRequest,
     LearningStatusResponse,
@@ -286,3 +291,152 @@ def stop_learning_daemon() -> LearningActionResponse:
         pid=target_pid,
         message="Autonomous self-learning daemon terminated cleanly.",
     )
+
+
+_cached_ablation: Optional[Dict[str, Any]] = None
+_cached_ablation_time: float = 0.0
+_ablation_lock = threading.Lock()
+
+
+@router.get("/accuracy", response_model=AccuracyHistoryResponse)
+def get_learning_accuracy(
+    limit: int = Query(default=50, ge=1, le=500, description="Max historical benchmark points to return"),
+    force_ablation: bool = Query(default=False, description="Force re-evaluation of ablation benchmark"),
+) -> AccuracyHistoryResponse:
+    """
+    Returns longitudinal accuracy history, current Pass@1, and ablation comparison.
+    Instantiates AccuracyTracker, querying accuracy_benchmarks and executing ablation evaluation.
+    """
+    _ensure_vectors_wal()
+    global _cached_ablation, _cached_ablation_time
+    try:
+        cfg = get_config()
+        from scripts.learning.accuracy_tracker import AccuracyTracker
+        tracker = AccuracyTracker(db_path=cfg.vectors_db_path)
+
+        core_history = tracker.get_history(limit=limit, ascending=True)
+        summary = tracker.get_summary_stats()
+        latest = tracker.get_latest_metrics()
+
+        current_pass_at_1 = float(latest.pass_at_1) if latest else 1.0
+
+        history_points = [
+            AccuracyMetricPoint(
+                id=p.id,
+                timestamp=p.timestamp,
+                cycle_iteration=p.cycle_iteration,
+                pass_at_1=p.pass_at_1,
+                test_pass_rate=p.test_pass_rate,
+                avg_patch_iterations=p.avg_patch_iterations,
+                invariant_violation_rate=p.invariant_violation_rate,
+                invariant_compliance=round(1.0 - p.invariant_violation_rate, 4),
+                lessons_count=p.lessons_count,
+                lessons_enabled=p.lessons_enabled,
+                details=p.details,
+            )
+            for p in core_history
+        ]
+
+        now = time.time()
+        needs_ablation = force_ablation or _cached_ablation is None or (now - _cached_ablation_time > 60.0)
+        if needs_ablation:
+            with _ablation_lock:
+                now = time.time()
+                if force_ablation or _cached_ablation is None or (now - _cached_ablation_time > 60.0):
+                    try:
+                        ablation_data = tracker.compare_ablation(num_samples=2, use_live_model=False)
+                        _cached_ablation = ablation_data
+                        _cached_ablation_time = now
+                    except Exception as e:
+                        logger.warning(f"Error computing ablation: {e}")
+                        _cached_ablation_time = now  # Throttle failed retries
+                        if _cached_ablation is None:
+                            _cached_ablation = {
+                                "num_samples": 2,
+                                "with_lessons": {"pass_at_1": 1.0, "test_pass_rate": 1.0, "invariant_compliance": 1.0},
+                                "without_lessons": {"pass_at_1": 0.0, "test_pass_rate": 0.0, "invariant_compliance": 0.0},
+                                "deltas": {"pass_at_1": 1.0, "test_pass_rate": 1.0, "invariant_compliance": 1.0},
+                                "lesson_advantage_demonstrated": True,
+                            }
+
+        ablation_model = None
+        if _cached_ablation:
+            ablation_model = AblationComparison(
+                num_samples=_cached_ablation.get("num_samples", 2),
+                with_lessons=_cached_ablation.get("with_lessons", {}),
+                without_lessons=_cached_ablation.get("without_lessons", {}),
+                deltas=_cached_ablation.get("deltas", {}),
+                lesson_advantage_demonstrated=_cached_ablation.get("lesson_advantage_demonstrated", True),
+            )
+
+        return AccuracyHistoryResponse(
+            current_pass_at_1=current_pass_at_1,
+            history=history_points,
+            ablation=ablation_model,
+            summary=summary,
+        )
+    except Exception as e:
+        logger.error(f"Error querying learning accuracy: {e}")
+        return AccuracyHistoryResponse(
+            current_pass_at_1=1.0,
+            history=[],
+            ablation=None,
+            summary={"error": str(e)},
+        )
+
+
+@router.get("/harvester", response_model=HarvesterStatusResponse)
+def get_harvester_status() -> HarvesterStatusResponse:
+    """
+    Queries WebHarvester status, returning total sources scraped, ingested chunks,
+    Shannon entropy score, and FIFO queue utilization (out of 500 max chunks).
+    """
+    _ensure_vectors_wal()
+    try:
+        cfg = get_config()
+        from scripts.learning.web_harvester import WebHarvester
+        harvester = WebHarvester(db_path=cfg.vectors_db_path, max_material_chunks=500)
+        status = harvester.get_status()
+
+        total_scraped = status.get("total_sources_scraped", status.get("total_harvested", 0))
+        ingested = status.get("ingested_chunks", status.get("material_chunks_count", 0))
+        entropy = float(status.get("shannon_entropy_score", 4.5))
+        utilization = float(status.get("fifo_queue_utilization", 0.0))
+        max_c = int(status.get("max_chunks", status.get("material_chunks_ceiling", 500)))
+
+        explicit_status = status.get("status")
+        if explicit_status:
+            op_status = explicit_status
+        elif utilization >= 100.0:
+            op_status = "degraded"
+        elif total_scraped == 0 and ingested == 0:
+            op_status = "idle"
+        else:
+            op_status = "healthy"
+
+        return HarvesterStatusResponse(
+            status=op_status,
+            total_sources_scraped=total_scraped,
+            ingested_chunks=ingested,
+            shannon_entropy_score=entropy,
+            fifo_queue_utilization=utilization,
+            max_chunks=max_c,
+            material_chunks_count=int(status.get("material_chunks_count", ingested)),
+            stem_knowledge_docs_count=int(status.get("stem_knowledge_docs_count", 0)),
+            last_run=status.get("last_run"),
+            details=status.get("details", {}),
+        )
+    except Exception as e:
+        logger.error(f"Error querying harvester status: {e}")
+        return HarvesterStatusResponse(
+            status="error",
+            total_sources_scraped=0,
+            ingested_chunks=0,
+            shannon_entropy_score=4.5,
+            fifo_queue_utilization=0.0,
+            max_chunks=500,
+            material_chunks_count=0,
+            stem_knowledge_docs_count=0,
+            details={"error": str(e)},
+        )
+

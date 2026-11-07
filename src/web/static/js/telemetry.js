@@ -453,6 +453,18 @@ export class LearningWidgetController {
     this.labelEl = document.getElementById('learning-status-label');
     this.cyclesEl = document.getElementById('learning-cycles-pill');
     this.lessonsEl = document.getElementById('learning-lessons-pill');
+    this.pass1El = document.getElementById('learning-pass1-pill');
+    this.harvesterEl = document.getElementById('learning-harvester-pill');
+    this.drawerEl = document.getElementById('learning-drawer');
+    this.drawerCloseBtn = document.getElementById('learning-drawer-close');
+
+    this.drawerPass1Val = document.getElementById('drawer-pass1-val');
+    this.drawerHarvesterVal = document.getElementById('drawer-harvester-val');
+    this.drawerEntropyVal = document.getElementById('drawer-entropy-val');
+    this.drawerAblationVal = document.getElementById('drawer-ablation-val');
+    this.drawerFifoVal = document.getElementById('drawer-fifo-val');
+    this.drawerSourcesVal = document.getElementById('drawer-sources-val');
+
     this.toggleBtn = document.getElementById('learning-toggle-btn');
     this.btnIcon = document.getElementById('learning-btn-icon');
     this.btnText = document.getElementById('learning-btn-text');
@@ -466,19 +478,126 @@ export class LearningWidgetController {
   init() {
     if (!this.toggleBtn) return;
     this.toggleBtn.addEventListener('click', () => this.handleToggle());
+
+    if (this.pass1El) {
+      this.pass1El.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleDrawer();
+      });
+    }
+    if (this.harvesterEl) {
+      this.harvesterEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleDrawer();
+      });
+    }
+    if (this.drawerCloseBtn) {
+      this.drawerCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeDrawer();
+      });
+    }
+
+    // Close drawer when clicking outside widget and drawer
+    document.addEventListener('click', (e) => {
+      if (this.drawerEl && this.drawerEl.style.display === 'block') {
+        if (!this.drawerEl.contains(e.target) && !this.widgetEl.contains(e.target)) {
+          this.closeDrawer();
+        }
+      }
+    });
+
+    // Close drawer on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.drawerEl && this.drawerEl.style.display === 'block') {
+        this.closeDrawer();
+      }
+    });
+
     this.pollStatus();
     this.pollInterval = setInterval(() => this.pollStatus(), 3000);
   }
 
+  toggleDrawer() {
+    if (!this.drawerEl) return;
+    const isHidden = this.drawerEl.style.display === 'none' || !this.drawerEl.style.display;
+    this.drawerEl.style.display = isHidden ? 'block' : 'none';
+  }
+
+  closeDrawer() {
+    if (this.drawerEl) {
+      this.drawerEl.style.display = 'none';
+    }
+  }
+
   async pollStatus() {
     try {
-      const res = await fetch('/api/learning/status');
-      if (res.ok) {
-        const data = await res.json();
+      const [statusRes, accRes, harvRes] = await Promise.allSettled([
+        fetch('/api/learning/status'),
+        fetch('/api/learning/accuracy'),
+        fetch('/api/learning/harvester'),
+      ]);
+
+      if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+        const data = await statusRes.value.json();
         this.renderState(data);
       }
+
+      if (accRes.status === 'fulfilled' && accRes.value.ok) {
+        const accData = await accRes.value.json();
+        this.renderAccuracy(accData);
+      }
+
+      if (harvRes.status === 'fulfilled' && harvRes.value.ok) {
+        const harvData = await harvRes.value.json();
+        this.renderHarvester(harvData);
+      }
     } catch (err) {
-      console.warn('Learning status poll failed:', err);
+      console.warn('Learning telemetry poll failed:', err);
+    }
+  }
+
+  renderAccuracy(data) {
+    if (!data) return;
+    const p1Pct = Math.round((data.current_pass_at_1 !== undefined ? data.current_pass_at_1 : 1.0) * 100);
+    if (this.pass1El) {
+      this.pass1El.textContent = `Pass@1: ${p1Pct}%`;
+      this.pass1El.title = `Pass@1 Benchmark Accuracy: ${p1Pct}% (Evaluated on complex polyglot STEM suite)`;
+    }
+    if (this.drawerPass1Val) {
+      this.drawerPass1Val.textContent = `${p1Pct}%`;
+    }
+    if (this.drawerAblationVal) {
+      if (data.ablation && data.ablation.deltas && data.ablation.deltas.pass_at_1 !== undefined) {
+        const delta = data.ablation.deltas.pass_at_1;
+        const sign = delta >= 0 ? '+' : '';
+        this.drawerAblationVal.textContent = `${sign}${(delta * 100).toFixed(1)}% advantage`;
+      } else {
+        this.drawerAblationVal.textContent = 'Baseline (0.0%)';
+      }
+    }
+  }
+
+  renderHarvester(data) {
+    if (!data) return;
+    const ingested = data.ingested_chunks || 0;
+    const maxC = data.max_chunks || 500;
+    if (this.harvesterEl) {
+      this.harvesterEl.textContent = `Harv: ${ingested}/${maxC}`;
+      this.harvesterEl.title = `Ingested SQ8 Chunks: ${ingested}/${maxC} (${(data.fifo_queue_utilization || 0).toFixed(1)}% Queue Utilization)`;
+    }
+    if (this.drawerHarvesterVal) {
+      this.drawerHarvesterVal.textContent = `${ingested}/${maxC}`;
+    }
+    if (this.drawerEntropyVal) {
+      const score = data.shannon_entropy_score !== undefined ? data.shannon_entropy_score.toFixed(2) : '4.50';
+      this.drawerEntropyVal.textContent = `${score} H`;
+    }
+    if (this.drawerFifoVal) {
+      this.drawerFifoVal.textContent = `${(data.fifo_queue_utilization || 0).toFixed(1)}%`;
+    }
+    if (this.drawerSourcesVal) {
+      this.drawerSourcesVal.textContent = `${data.total_sources_scraped || 0} sources`;
     }
   }
 

@@ -1392,11 +1392,11 @@ class WebHarvester:
         max_material_chunks: int = 500,
         ollama_url: str = "http://127.0.0.1:11434",
     ):
-        self.db_path = db_path
+        self.db_path = Path(db_path) if db_path else SQ8VectorIngester.DEFAULT_DB_PATH
         self.max_material_chunks = max_material_chunks
         self.pipeline = QualityFilterPipeline()
         self.ingester = SQ8VectorIngester(
-            db_path=db_path,
+            db_path=self.db_path,
             max_material_chunks=max_material_chunks,
             ollama_url=ollama_url,
         )
@@ -1469,14 +1469,39 @@ class WebHarvester:
             cur.execute("SELECT COUNT(*) FROM rag_documents WHERE collection = 'stem_knowledge'")
             doc_count = cur.fetchone()[0]
 
+            # Calculate average Shannon character entropy from recent corpus sample
+            avg_entropy = 4.5
+            try:
+                cur.execute("SELECT text FROM rag_documents WHERE collection = 'stem_knowledge' LIMIT 20")
+                rows = cur.fetchall()
+                if rows:
+                    entropies = [QualityFilterPipeline.calculate_shannon_entropy(r[0]) for r in rows if r[0]]
+                    if entropies:
+                        avg_entropy = round(sum(entropies) / len(entropies), 3)
+            except Exception:
+                pass
+
+        utilization_pct = round((chunk_count / max(1, self.max_material_chunks)) * 100.0, 2)
+        total_scraped = max(self._stats["total_harvested"], doc_count)
+
         return {
             "total_harvested": self._stats["total_harvested"],
+            "total_sources_scraped": total_scraped,
             "total_passed_quality": self._stats["total_passed_quality"],
             "total_rejected": self._stats["total_rejected"],
             "last_run": self._stats["last_run"],
             "material_chunks_count": chunk_count,
+            "ingested_chunks": chunk_count,
             "stem_knowledge_docs_count": doc_count,
             "material_chunks_ceiling": self.max_material_chunks,
+            "max_chunks": self.max_material_chunks,
+            "shannon_entropy_score": avg_entropy,
+            "fifo_queue_utilization": utilization_pct,
+            "details": {
+                "utilization_pct": utilization_pct,
+                "entropy": avg_entropy,
+                "ceiling": self.max_material_chunks,
+            },
         }
 
 

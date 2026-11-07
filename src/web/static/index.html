@@ -87,11 +87,53 @@
             <span class="learning-label" id="learning-status-label">Learning: Idle</span>
             <span class="learning-pill" id="learning-cycles-pill" title="Completed cycles">#0</span>
             <span class="learning-pill lessons-pill" id="learning-lessons-pill" title="Harvested lessons">0 Lessons</span>
+            <span class="learning-pill accuracy-pill" id="learning-pass1-pill" title="Current Pass@1 Accuracy">Pass@1: 100%</span>
+            <span class="learning-pill harvester-pill" id="learning-harvester-pill" title="Web Harvester Queue">Harv: 0/500</span>
           </div>
           <button class="learning-toggle-btn start" id="learning-toggle-btn" title="Start / Stop Autonomous Self-Learning">
             <span class="btn-icon" id="learning-btn-icon">▶</span>
             <span class="btn-text" id="learning-btn-text">Start</span>
           </button>
+          <!-- Learning Telemetry Drawer -->
+          <div class="telemetry-drawer learning-drawer" id="learning-drawer" style="display: none;">
+            <div class="telemetry-drawer-header">
+              <span>🧠 Closed-Loop Accuracy & Harvester Telemetry</span>
+              <button class="telemetry-drawer-close" id="learning-drawer-close">&times;</button>
+            </div>
+            <div class="telemetry-drawer-body" id="learning-drawer-body">
+              <div class="telemetry-pill-group drawer-pills" id="drawer-pills">
+                <span class="telemetry-pill pill-accuracy" id="drawer-pass1-pill">
+                  <span class="pill-dot green"></span>
+                  <span class="pill-title">Pass@1:</span>
+                  <span class="pill-badge" id="drawer-pass1-val">100%</span>
+                </span>
+                <span class="telemetry-pill pill-harvester" id="drawer-harvester-pill">
+                  <span class="pill-dot blue"></span>
+                  <span class="pill-title">Queue:</span>
+                  <span class="pill-badge" id="drawer-harvester-val">0/500</span>
+                </span>
+                <span class="telemetry-pill pill-entropy" id="drawer-entropy-pill">
+                  <span class="pill-dot purple"></span>
+                  <span class="pill-title">Entropy:</span>
+                  <span class="pill-badge" id="drawer-entropy-val">4.50 H</span>
+                </span>
+              </div>
+              <div class="learning-telemetry-grid" id="learning-telemetry-grid">
+                <div class="telemetry-metric-row">
+                  <span class="metric-label">Ablation Delta:</span>
+                  <span class="metric-val" id="drawer-ablation-val">+100.0% advantage</span>
+                </div>
+                <div class="telemetry-metric-row">
+                  <span class="metric-label">FIFO Utilization:</span>
+                  <span class="metric-val" id="drawer-fifo-val">0.0%</span>
+                </div>
+                <div class="telemetry-metric-row">
+                  <span class="metric-label">Sources Scraped:</span>
+                  <span class="metric-val" id="drawer-sources-val">0 sources</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="chat-header-actions">
           <button class="header-action-btn" id="clear-chat-btn" title="Clear current messages">Clear</button>

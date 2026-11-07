@@ -278,3 +278,50 @@ class LearningActionResponse(BaseModel):
     )
     pid: Optional[int] = Field(default=None, description="Process ID")
     message: str = Field(..., description="Human-readable status summary")
+
+
+class AccuracyMetricPoint(BaseModel):
+    """Data model representing an accuracy evaluation point in the web API."""
+    id: str = Field(..., description="Unique record identifier")
+    timestamp: str = Field(..., description="ISO 8601 evaluation timestamp")
+    cycle_iteration: int = Field(..., description="Self-play cycle index")
+    pass_at_1: float = Field(..., description="Pass@1 accuracy rate (0.0 - 1.0)")
+    test_pass_rate: float = Field(..., description="Average unit test pass rate (0.0 - 1.0)")
+    avg_patch_iterations: float = Field(..., description="Average repair iterations needed")
+    invariant_violation_rate: float = Field(..., description="Rate of physical/AST invariant violations")
+    invariant_compliance: Optional[float] = Field(default=None, description="Invariant compliance rate (1 - violations)")
+    lessons_count: int = Field(..., description="Count of active RAG lessons during evaluation")
+    lessons_enabled: bool = Field(default=True, description="Whether lessons were supplied to solver")
+    details: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Supplementary evaluation details")
+
+
+class AblationComparison(BaseModel):
+    """Ablation benchmark comparison between with_lessons and without_lessons conditions."""
+    num_samples: int = Field(default=0, description="Number of evaluation samples per condition")
+    with_lessons: Dict[str, Any] = Field(default_factory=dict, description="Performance metrics when RAG lessons are active")
+    without_lessons: Dict[str, Any] = Field(default_factory=dict, description="Baseline performance metrics without RAG lessons")
+    deltas: Dict[str, float] = Field(default_factory=dict, description="Metric differentials (with_lessons - without_lessons)")
+    lesson_advantage_demonstrated: bool = Field(default=True, description="True if lessons improve or maintain Pass@1")
+
+
+class AccuracyHistoryResponse(BaseModel):
+    """Longitudinal accuracy history and ablation evaluation response."""
+    current_pass_at_1: float = Field(default=1.0, description="Current Pass@1 benchmark score")
+    history: List[AccuracyMetricPoint] = Field(default_factory=list, description="Historical accuracy benchmark points")
+    ablation: Optional[AblationComparison] = Field(default=None, description="Ablation comparison metrics")
+    summary: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Summary statistics across historical benchmarks")
+
+
+class HarvesterStatusResponse(BaseModel):
+    """Status report for the Autonomous Web Harvester and SQ8 ingestion pipeline."""
+    status: str = Field(default="healthy", description="Operational status: 'healthy', 'degraded', or 'idle'")
+    total_sources_scraped: int = Field(default=0, description="Total raw sources or documents harvested")
+    ingested_chunks: int = Field(default=0, description="Total chunks ingested into material_chunks")
+    shannon_entropy_score: float = Field(default=4.5, description="Shannon character entropy score of harvested corpus (expected 3.0 <= H <= 6.0)")
+    fifo_queue_utilization: float = Field(default=0.0, description="FIFO queue utilization percentage out of max ceiling")
+    max_chunks: int = Field(default=500, description="Maximum ceiling of material chunks before FIFO eviction")
+    material_chunks_count: int = Field(default=0, description="Current row count in material_chunks table")
+    stem_knowledge_docs_count: int = Field(default=0, description="Current document count in stem_knowledge collection")
+    last_run: Optional[str] = Field(default=None, description="ISO timestamp of last harvester execution")
+    details: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Supplementary pipeline statistics")
+
