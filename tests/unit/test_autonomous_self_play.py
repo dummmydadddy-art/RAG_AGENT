@@ -402,3 +402,89 @@ class TestAPERLReflectionUnitTaxonomy:
         l_inv = aperl.distill_lesson(t_inv)
         assert "hamiltonian" in l_inv.situation or "physics" in l_inv.situation
         assert "velocity-verlet" in l_inv.action or "symplectic" in l_inv.action
+
+    def test_aperl_avoids_traceback_substring_false_positives(self):
+        aperl = APERLEngine()
+
+        # DP AssertionError containing "Traceback (most recent call last):" (contains 'race')
+        t_dp_tb = ExecutionTrace(
+            task_id="dp_tb",
+            language="python",
+            error_type="AssertionError",
+            error_message="Traceback (most recent call last):\n  File 'x.py', line 10, in <module>\n    assert val == 32\nAssertionError",
+            failed_code="def knapsack(): pass",
+            fixed_code="def knapsack(): return 0",
+            test_output="",
+            domain="dynamic_programming",
+        )
+        l_dp_tb = aperl.distill_lesson(t_dp_tb)
+        assert "dynamic programming" in l_dp_tb.situation.lower()
+        assert "thread" not in l_dp_tb.action.lower()
+
+        # Concurrency AssertionError mentioning "timeout=0.01" in traceback
+        t_conc_tb = ExecutionTrace(
+            task_id="conc_tb",
+            language="python",
+            error_type="AssertionError",
+            error_message="Traceback (most recent call last):\n  assert not rb.push(40, timeout=0.01)\nAssertionError",
+            failed_code="class Ring: pass",
+            fixed_code="class Ring: pass",
+            test_output="",
+            domain="concurrency",
+        )
+        l_conc_tb = aperl.distill_lesson(t_conc_tb)
+        assert "concurrent threads" in l_conc_tb.situation.lower()
+        assert "5.0-second" not in l_conc_tb.reason.lower()
+
+        # Memory limit / OpenBLAS branch
+        t_mem = ExecutionTrace(
+            task_id="mem_fail",
+            language="python",
+            error_type="MemoryLimitError",
+            error_message="Process memory limit exceeded (256 MB ceiling)",
+            failed_code="import numpy as np",
+            fixed_code="import math",
+            test_output="",
+            domain="numerical_physics",
+        )
+        l_mem = aperl.distill_lesson(t_mem)
+        assert "256 mb" in l_mem.situation.lower()
+        assert "numpy" in l_mem.action.lower()
+
+        # NameError standalone imports branch
+        t_name = ExecutionTrace(
+            task_id="name_fail",
+            language="python",
+            error_type="AssertionError",
+            error_message="NameError: name 'Optional' is not defined",
+            failed_code="class Pool: pass",
+            fixed_code="from typing import Optional\nclass Pool: pass",
+            test_output="",
+            domain="concurrency",
+        )
+        l_name = aperl.distill_lesson(t_name)
+        assert "typing" in l_name.action.lower() or "imports" in l_name.action.lower()
+
+    def test_custom_db_self_play_does_not_clobber_production_state_file(self, test_db: Path):
+        from scripts.learning.autonomous_self_play import STATE_FILE
+
+        before = STATE_FILE.read_text(encoding="utf-8") if STATE_FILE.exists() else None
+        generator = SyntheticChallengeGenerator()
+        aperl = APERLEngine(db_path=test_db)
+        consolidator = EbbinghausConsolidator()
+        tracker = AccuracyTracker(db_path=test_db)
+
+        res = run_self_play_cycle(
+            generator=generator,
+            aperl=aperl,
+            consolidator=consolidator,
+            iteration=1,
+            tracker=tracker,
+            db_path=test_db,
+            use_live_model=False,
+        )
+        assert res["solution_source"] == "offline_reference"
+        after = STATE_FILE.read_text(encoding="utf-8") if STATE_FILE.exists() else None
+        assert after == before
+
+

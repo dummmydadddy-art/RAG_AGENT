@@ -321,3 +321,51 @@ class TestAblationComparison:
 
         assert ablation["deltas"]["pass_at_1"] > 0.0
         assert ablation["lesson_advantage_demonstrated"] is True
+
+    def test_get_retrieved_lessons_resolves_systems_concurrency_alias_and_priority(self, tmp_path: Path):
+        db_path = tmp_path / "alias_lessons.sqlite"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("""
+                CREATE TABLE rag_documents (
+                    id TEXT PRIMARY KEY,
+                    collection TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    metadata TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.execute(
+                "INSERT INTO rag_documents VALUES ('l_cand', 'lessons', ?, ?, CURRENT_TIMESTAMP)",
+                (
+                    "When coordinating threads, do acquire mutex lock, because avoids race.",
+                    json.dumps({"domain": "concurrency", "status": "candidate", "usage_count": 1, "strength": 15.0}),
+                ),
+            )
+            conn.execute(
+                "INSERT INTO rag_documents VALUES ('l_ver', 'lessons', ?, ?, CURRENT_TIMESTAMP)",
+                (
+                    "When managing concurrent memory pools, do validate lease ownership, because avoids double-free.",
+                    json.dumps({"domain": "concurrency", "status": "verified", "usage_count": 6, "strength": 35.0}),
+                ),
+            )
+            conn.commit()
+
+        tracker = AccuracyTracker(db_path=db_path)
+        lessons = tracker.get_retrieved_lessons(domain="systems_concurrency", limit=2)
+        assert len(lessons) == 2
+        assert "memory pools" in lessons[0].lower()
+        assert "coordinating threads" in lessons[1].lower()
+
+    def test_compare_ablation_8_samples_covers_all_templates(self, tracker: AccuracyTracker):
+        seen_prompts = []
+
+        def tracking_solver(ch, lessons_enabled, retrieved):
+            if lessons_enabled:
+                seen_prompts.append(ch.prompt)
+                return ch.reference_solution
+            return ch.starter_code
+
+        ablation = tracker.compare_ablation(num_samples=8, solver_fn=tracking_solver, record_to_db=False)
+        assert ablation["with_lessons"]["pass_at_1"] == 1.0
+        assert len(set(seen_prompts)) == 8
+

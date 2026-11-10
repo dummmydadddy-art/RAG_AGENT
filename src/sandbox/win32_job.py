@@ -343,6 +343,16 @@ class Win32JobSandbox:
         effective_timeout = timeout if timeout is not None else self.timeout_seconds
         t0 = time.time()
         env = os.environ.copy()
+        # Prevent native BLAS/OMP libraries (e.g. OpenBLAS via numpy) from spawning
+        # multi-core thread arenas that breach the 256 MB Win32 Job Object cap.
+        for _blas_var in (
+            "OPENBLAS_NUM_THREADS",
+            "OMP_NUM_THREADS",
+            "MKL_NUM_THREADS",
+            "NUMEXPR_NUM_THREADS",
+            "VECLIB_MAXIMUM_THREADS",
+        ):
+            env.setdefault(_blas_var, "1")
         if env_vars:
             env.update(env_vars)
 

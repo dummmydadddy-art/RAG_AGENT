@@ -183,6 +183,8 @@ def run_self_play_cycle(
     model_tag: str = "stem-coder-expert:latest",
     domain_override: Optional[str] = None,
     language: str = "python",
+    allow_fallback: bool = True,
+    state_file: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Executes a single cycle of challenge generation across 4 expanded domains,
@@ -193,8 +195,24 @@ def run_self_play_cycle(
     selected_domain = domain_override or DOMAINS[(iteration - 1) % len(DOMAINS)]
     generator_domain = "concurrency" if selected_domain == "systems_concurrency" else selected_domain
 
-    logger.info(f"--- Cycle #{iteration}: Generating {selected_domain} challenge in {language} ---")
-    challenge = generator.generate_challenge(domain=generator_domain, language=language)
+    challenge_key: Optional[str] = None
+    templates = getattr(generator, "CHALLENGE_TEMPLATES", None)
+    if isinstance(templates, dict) and language.lower() == "python":
+        domain_pool = templates.get(generator_domain)
+        if isinstance(domain_pool, dict) and domain_pool:
+            keys = list(domain_pool.keys())
+            round_idx = max(0, (iteration - 1) // len(DOMAINS))
+            challenge_key = keys[round_idx % len(keys)]
+
+    logger.info(f"--- Cycle #{iteration}: Generating {selected_domain} challenge in {language} (key={challenge_key}) ---")
+    if challenge_key is not None:
+        challenge = generator.generate_challenge(
+            domain=generator_domain,
+            language=language,
+            challenge_key=challenge_key,
+        )
+    else:
+        challenge = generator.generate_challenge(domain=generator_domain, language=language)
     logger.info(f"Challenge ID: {challenge.challenge_id} | Prompt: {challenge.prompt[:60]}...")
 
     # 2. Retrieve relevant prior engineering lessons
@@ -205,13 +223,33 @@ def run_self_play_cycle(
         retrieved_lessons = query_rag_lessons(domain=selected_domain, db_path=effective_db, limit=3)
     logger.info(f"Retrieved {len(retrieved_lessons)} prior lesson(s) for context augmentation.")
 
-    # 3. Model solving with CoT and offline fallback
-    sol = solve_challenge(
-        challenge=challenge,
-        model_tag=model_tag,
-        use_live_model=use_live_model,
-        retrieved_lessons=retrieved_lessons,
-    )
+    # 3. Model solving with CoT and explicit source tracking
+    if not use_live_model:
+        sol = solve_challenge(
+            challenge=challenge,
+            model_tag=model_tag,
+            use_live_model=False,
+            retrieved_lessons=retrieved_lessons,
+        )
+        solution_source = "offline_reference"
+    else:
+        live_sol = solve_challenge(
+            challenge=challenge,
+            model_tag=model_tag,
+            use_live_model=True,
+            retrieved_lessons=retrieved_lessons,
+            allow_fallback=False,
+        )
+        if live_sol and live_sol.strip():
+            sol = live_sol
+            solution_source = "live_model"
+        elif allow_fallback:
+            sol = challenge.reference_solution or challenge.starter_code
+            solution_source = "reference_fallback"
+            logger.info(f"Live model '{model_tag}' produced no runnable code; using reference fallback.")
+        else:
+            sol = ""
+            solution_source = "live_model_empty"
 
     # 4. Sandboxed execution in Win32 Job Object sandbox
     t0 = time.time()
@@ -224,11 +262,13 @@ def run_self_play_cycle(
     )
     elapsed = time.time() - t0
     logger.info(
-        f"Sandbox Execution: success={exec_res.success}, ast_violation={exec_res.ast_violation}, "
-        f"timeout={exec_res.timeout}, elapsed={elapsed:.2f}s, peak_mem={exec_res.peak_memory_bytes}B"
+        f"Sandbox Execution: success={exec_res.success}, source={solution_source}, "
+        f"ast_violation={exec_res.ast_violation}, timeout={exec_res.timeout}, "
+        f"elapsed={elapsed:.2f}s, peak_mem={exec_res.peak_memory_bytes}B"
     )
 
     # 5. Categorize execution result & distill lesson via APERL
+    combined_err_text = f"{exec_res.stderr or ''} {exec_res.error_message or ''}".lower()
     if exec_res.success:
         err_type = "None"
         err_msg = "All unit tests and physical constraints passed"
@@ -238,6 +278,9 @@ def run_self_play_cycle(
     elif exec_res.timeout:
         err_type = "TimeoutError"
         err_msg = "Execution timed out after 5.0s"
+    elif any(k in combined_err_text for k in ("memory limit", "memoryerror", "out of memory", "openblas")):
+        err_type = "MemoryLimitError"
+        err_msg = exec_res.error_message or exec_res.stderr or "Process memory limit exceeded (256 MB ceiling)"
     else:
         err_type = "AssertionError"
         err_msg = exec_res.stderr or exec_res.error_message or "Test assertion failed"
@@ -255,6 +298,19 @@ def run_self_play_cycle(
     )
     lesson_id = aperl.process_and_save(trace, challenge=challenge)
     logger.info(f"APERL distilled lesson {lesson_id} (error_type={err_type})")
+
+    lesson_text = ""
+    if effective_db and Path(effective_db).exists():
+        try:
+            with sqlite3.connect(effective_db, timeout=10.0) as _conn:
+                _row = _conn.execute(
+                    "SELECT text FROM rag_documents WHERE collection = 'lessons' AND id = ?",
+                    (lesson_id,),
+                ).fetchone()
+                if _row:
+                    lesson_text = str(_row[0])
+        except Exception as _e:
+            logger.debug(f"Could not read back distilled lesson text for {lesson_id}: {_e}")
 
     # 6. Reinforce retrieved lessons if execution was successful
     if exec_res.success and retrieved_lessons:
@@ -274,8 +330,16 @@ def run_self_play_cycle(
 
     details = {
         "challenge_id": challenge.challenge_id,
+        "challenge_key": challenge_key,
         "domain": selected_domain,
+        "language": language,
         "difficulty": challenge.difficulty,
+        "model_tag": model_tag,
+        "solution_source": solution_source,
+        "prompt": challenge.prompt,
+        "solution": sol,
+        "lesson_id": lesson_id,
+        "lesson": lesson_text,
         "duration_s": round(exec_res.duration_s, 4),
         "peak_memory_bytes": exec_res.peak_memory_bytes,
         "retrieved_lessons_count": len(retrieved_lessons),
@@ -293,7 +357,7 @@ def run_self_play_cycle(
         lessons_enabled=True,
         details=details,
     )
-    logger.info(f"Recorded accuracy benchmark {benchmark_id}: Pass@1={pass_at_1}")
+    logger.info(f"Recorded accuracy benchmark {benchmark_id}: Pass@1={pass_at_1} (source={solution_source})")
 
     # 8. Periodic Ebbinghaus consolidation every 5 cycles
     consolidation_report = None
@@ -302,31 +366,37 @@ def run_self_play_cycle(
         consolidation_report = consolidate_database_lessons(db_path=effective_db)
         logger.info(f"Ebbinghaus consolidation completed: {consolidation_report}")
 
-    # 9. Update state file for Web UI telemetry
-    try:
-        state_data = {
-            "pid": os.getpid(),
-            "status": "Running",
-            "cycle_count": iteration,
-            "iteration": iteration,
-            "current_domain": selected_domain,
-            "current_language": language,
-            "last_cycle_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "last_challenge_id": challenge.challenge_id,
-            "last_success": exec_res.success,
-            "last_lesson_id": lesson_id,
-            "last_benchmark_id": benchmark_id,
-        }
-        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(json.dumps(state_data, indent=2), encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"Could not update {STATE_FILE}: {e}")
+    # 9. Update state file ONLY for production DB or explicit state_file
+    prod_db = (ROOT / "backend" / "storage" / "vectors.sqlite").resolve()
+    is_prod_db = (db_path is None) or (Path(db_path).resolve() == prod_db)
+    target_state_file = state_file if state_file is not None else (STATE_FILE if is_prod_db else None)
+    if target_state_file is not None:
+        try:
+            state_data = {
+                "pid": os.getpid(),
+                "status": "Running",
+                "cycle_count": iteration,
+                "iteration": iteration,
+                "current_domain": selected_domain,
+                "current_language": language,
+                "last_cycle_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "last_challenge_id": challenge.challenge_id,
+                "last_success": exec_res.success,
+                "last_solution_source": solution_source,
+                "last_lesson_id": lesson_id,
+                "last_benchmark_id": benchmark_id,
+            }
+            target_state_file.parent.mkdir(parents=True, exist_ok=True)
+            target_state_file.write_text(json.dumps(state_data, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Could not update {target_state_file}: {e}")
 
     return {
         "iteration": iteration,
         "domain": selected_domain,
         "challenge_id": challenge.challenge_id,
         "success": exec_res.success,
+        "solution_source": solution_source,
         "lesson_id": lesson_id,
         "benchmark_id": benchmark_id,
         "consolidation_report": consolidation_report,
@@ -339,6 +409,7 @@ def main():
     parser.add_argument("--max-iterations", type=int, default=0, help="0 for infinite daemon loop")
     parser.add_argument("--interval-seconds", type=float, default=15.0, help="Sleep between cycles")
     parser.add_argument("--use-live-model", action="store_true", default=False, help="Enable live Ollama query")
+    parser.add_argument("--no-fallback", action="store_true", default=False, help="Disable reference fallback when live model fails")
     parser.add_argument("--model-tag", type=str, default="stem-coder-expert:latest")
     parser.add_argument("--db-path", type=str, default=None)
     args = parser.parse_args()
@@ -377,6 +448,8 @@ def main():
                 db_path=custom_db,
                 use_live_model=args.use_live_model,
                 model_tag=args.model_tag,
+                allow_fallback=not args.no_fallback,
+                state_file=STATE_FILE,
             )
 
             if args.max_iterations > 0 and iteration >= args.max_iterations:
@@ -394,7 +467,11 @@ def main():
     except KeyboardInterrupt:
         logger.info("Autonomous Self-Play Daemon stopped by keyboard interrupt.")
     finally:
-        # Mark status as Stopped
+        # Mark status as Stopped and remove stale PID file
+        try:
+            PID_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
         if STATE_FILE.exists():
             try:
                 data = json.loads(STATE_FILE.read_text(encoding="utf-8"))

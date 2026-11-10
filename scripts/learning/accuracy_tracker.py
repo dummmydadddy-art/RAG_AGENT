@@ -267,9 +267,28 @@ class AccuracyTracker:
     def get_retrieved_lessons(self, domain: Optional[str] = None, limit: int = 3) -> List[str]:
         """
         Retrieves active canonical lessons from rag_documents (collection='lessons').
-        Falls back to curated domain engineering lessons if the store is empty.
+        Normalizes domain aliases, prioritizes verified/high-utility lessons, and
+        falls back to curated domain engineering lessons when SQLite has fewer than `limit`.
         """
         lessons: List[str] = []
+        alias_groups = {
+            "dynamic_programming": {"dynamic_programming", "dp"},
+            "dp": {"dynamic_programming", "dp"},
+            "graph_algorithms": {"graph_algorithms", "graphs", "graph"},
+            "graphs": {"graph_algorithms", "graphs", "graph"},
+            "graph": {"graph_algorithms", "graphs", "graph"},
+            "concurrency": {"concurrency", "systems_concurrency", "systems"},
+            "systems_concurrency": {"concurrency", "systems_concurrency", "systems"},
+            "systems": {"concurrency", "systems_concurrency", "systems"},
+            "numerical_physics": {"numerical_physics", "physics"},
+            "physics": {"numerical_physics", "physics"},
+        }
+        keyword_groups = {
+            "dynamic_programming": ("knapsack", "dp", "tsp", "bitmask", "substructure", "backtracking"),
+            "graph_algorithms": ("flow", "cut", "edmonds", "bellman", "cycle", "graph", "kirchhoff"),
+            "concurrency": ("thread", "lock", "concurrency", "buffer", "pool", "ring", "deadlock", "lease"),
+            "numerical_physics": ("symplectic", "verlet", "kepler", "orbit", "oscillator", "hamiltonian", "physics", "energy"),
+        }
         try:
             with self._get_connection() as conn:
                 cur = conn.cursor()
@@ -279,21 +298,46 @@ class AccuracyTracker:
                         "SELECT text, metadata FROM rag_documents WHERE collection = 'lessons' ORDER BY created_at DESC;"
                     )
                     rows = cur.fetchall()
+                    scored: List[tuple[tuple[int, int, float], str]] = []
+                    d_norm = (domain or "").strip().lower()
+                    valid_domains = alias_groups.get(d_norm, {d_norm} if d_norm else set())
+                    canonical_dom = (
+                        "dynamic_programming" if d_norm in ("dp", "dynamic_programming")
+                        else "graph_algorithms" if d_norm in ("graph", "graphs", "graph_algorithms")
+                        else "concurrency" if d_norm in ("concurrency", "systems_concurrency", "systems")
+                        else "numerical_physics" if d_norm in ("physics", "numerical_physics")
+                        else d_norm
+                    )
+                    kws = keyword_groups.get(canonical_dom, ())
+
                     for r in rows:
                         text = str(r["text"])
                         if "When None" in text:
                             continue
                         meta = json.loads(r["metadata"]) if r["metadata"] else {}
-                        if meta.get("status") == "retired":
+                        status = str(meta.get("status", "candidate")).lower()
+                        if status == "retired":
                             continue
 
-                        if domain:
-                            d_norm = domain.lower()
-                            meta_domain = str(meta.get("domain", "")).lower()
-                            if (d_norm in text.lower() or d_norm in meta_domain or
-                                    (d_norm == "concurrency" and any(k in text.lower() for k in ("thread", "lock", "concurrency", "buffer", "pool")))):
-                                lessons.append(text)
-                        else:
+                        meta_domain = str(meta.get("domain", "")).strip().lower()
+                        text_lower = text.lower()
+                        matched = True
+                        if d_norm:
+                            matched = (
+                                meta_domain in valid_domains
+                                or any(vd in meta_domain for vd in valid_domains if vd)
+                                or d_norm in text_lower
+                                or any(k in text_lower for k in kws)
+                            )
+                        if matched:
+                            is_verified = 1 if status == "verified" else 0
+                            usage = int(meta.get("usage_count", meta.get("use_count", 0)) or 0)
+                            strength = float(meta.get("strength", 10.0) or 10.0)
+                            scored.append(((is_verified, usage, strength), text))
+
+                    scored.sort(key=lambda item: item[0], reverse=True)
+                    for _, text in scored:
+                        if text not in lessons:
                             lessons.append(text)
                         if len(lessons) >= limit:
                             break
@@ -344,6 +388,7 @@ class AccuracyTracker:
         solver_fn: Optional[Callable[[Any, bool, List[str]], str]] = None,
         record_to_db: bool = False,
         cycle: int = 0,
+        allow_fallback: bool = False,
     ) -> Dict[str, Any]:
         """
         Executes an automated ablation study comparing problem-solving performance:
@@ -370,11 +415,21 @@ class AccuracyTracker:
         ]
 
         challenges = []
+        templates = getattr(generator, "CHALLENGE_TEMPLATES", None)
         for i in range(num_samples):
             dom = domains[i % len(domains)]
             # Normalize systems_concurrency if passed
             gen_dom = "concurrency" if dom == "systems_concurrency" else dom
-            ch = generator.generate_challenge(domain=gen_dom, language="python")
+            challenge_key = None
+            if isinstance(templates, dict):
+                pool = templates.get(gen_dom)
+                if isinstance(pool, dict) and pool:
+                    keys = list(pool.keys())
+                    challenge_key = keys[(i // len(domains)) % len(keys)]
+            if challenge_key is not None:
+                ch = generator.generate_challenge(domain=gen_dom, language="python", challenge_key=challenge_key)
+            else:
+                ch = generator.generate_challenge(domain=gen_dom, language="python")
             challenges.append(ch)
 
         def evaluate_condition(lessons_enabled: bool) -> Dict[str, Any]:
@@ -390,6 +445,7 @@ class AccuracyTracker:
                         model_tag=model_tag,
                         use_live_model=True,
                         retrieved_lessons=retrieved if lessons_enabled else None,
+                        allow_fallback=allow_fallback,
                     )
                 else:
                     # Deterministic offline hermetic mode

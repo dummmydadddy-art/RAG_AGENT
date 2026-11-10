@@ -149,20 +149,23 @@ def solve_challenge(
     model_tag: str = "stem-coder-expert:latest",
     use_live_model: bool = True,
     ollama_url: str = "http://localhost:11434",
-    timeout: float = 30.0,
+    timeout: float = 60.0,
     retrieved_lessons: Optional[List[str]] = None,
+    allow_fallback: bool = True,
 ) -> str:
     """
     Autonomously generates a solution to a SyntheticChallenge using the local
     Ollama LLM with Chain-of-Thought (CoT) reasoning.
 
-    When Ollama is offline, unreachable, or returns unparseable code, seamlessly
-    falls back to `challenge.reference_solution` to ensure hermetic offline testability.
+    When Ollama is offline, unreachable, or returns unparseable code and
+    `allow_fallback=True`, seamlessly falls back to `challenge.reference_solution`
+    to ensure hermetic offline testability. When `allow_fallback=False`, returns
+    empty string if the live model fails to produce runnable code.
     """
-    fallback_solution = challenge.reference_solution or challenge.starter_code
+    fallback_solution = (challenge.reference_solution or challenge.starter_code) if allow_fallback else ""
 
     if not use_live_model:
-        return fallback_solution
+        return challenge.reference_solution or challenge.starter_code
 
     # Fast pre-flight check (<= 1.5s)
     if not is_ollama_available(ollama_url, probe_timeout=1.5):
@@ -178,8 +181,11 @@ def solve_challenge(
 
     system_prompt = (
         "You are STEM-Coder-Expert, an elite algorithmic and systems engineer. "
-        "Your task is to write correct, optimal, sandboxed code. "
-        "Constraints: max 256 MB RAM, max 5.0 seconds runtime, no forbidden modules (os, sys, subprocess, shutil, ctypes, socket). "
+        "Your task is to write correct, optimal, standalone sandboxed code. "
+        "Constraints: max 256 MB RAM, max 5.0 seconds runtime, pure standard library ONLY "
+        "(no numpy, scipy, os, sys, subprocess, shutil, ctypes, socket). "
+        "Your code block MUST include ALL required imports at the top "
+        "(e.g., `from typing import Any, Optional`, `import math, threading, time`, `from collections import deque`). "
         "First provide brief reasoning, then output the complete runnable code in a markdown block."
     )
 
@@ -195,13 +201,14 @@ Prompt:
 {invariants_text}
 - Max RAM: 256 MB
 - Max Runtime: 5.0 seconds
+- Include ALL required imports (such as `from typing import Any, Optional`) at the top of your code block.
 
 ### Starter Code
 ```{challenge.language}
 {challenge.starter_code}
 ```
 {lessons_section}
-Please solve the problem step-by-step and output your complete, self-contained implementation inside a single ```{challenge.language} ... ``` code block.
+Please solve the problem step-by-step and output your complete, self-contained, runnable implementation (including all imports and exact function/class names from Starter Code) inside a single ```{challenge.language} ... ``` code block.
 """
 
     payload = {
@@ -257,6 +264,7 @@ class SyntheticChallengeGenerator:
         "graph_algorithms": "graph_algorithms",
         "concurrency": "concurrency",
         "systems": "concurrency",
+        "systems_concurrency": "concurrency",
         "numerical_physics": "numerical_physics",
         "physics": "numerical_physics",
     }

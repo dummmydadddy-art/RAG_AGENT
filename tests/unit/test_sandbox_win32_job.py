@@ -315,3 +315,12 @@ except EOFError:
     def test_windows_job_sandbox_alias(self):
         """Verifies WindowsJobSandbox is an exact alias for Win32JobSandbox."""
         assert WindowsJobSandbox is Win32JobSandbox
+
+    def test_execute_numpy_within_256mb_sandbox(self):
+        """Verify single-threaded BLAS defaults prevent OpenBLAS 256 MB OOM on numpy import."""
+        code = "import numpy as np\ndef sum_vec(xs):\n    return int(np.array(xs).sum())\n"
+        tests = "assert sum_vec([1, 2, 3, 4]) == 10\n"
+        res = execute_sandboxed_code(code, tests, language="python", timeout=5.0, max_memory_mb=256)
+        assert res.success is True, f"numpy inside 256MB sandbox failed: {res.stderr} | {res.error_message}"
+        assert res.peak_memory_bytes < 128 * 1024 * 1024
+

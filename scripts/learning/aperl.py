@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import hashlib
 import json
 import logging
+import re
 import sqlite3
 import time
 
@@ -60,7 +61,8 @@ class APERLEngine:
     def _init_db(self) -> None:
         if self.db_path:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite3.connect(self.db_path, timeout=10.0) as conn:
+                conn.execute("PRAGMA busy_timeout = 10000;")
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS rag_documents (
                         id TEXT NOT NULL,
@@ -114,11 +116,24 @@ class APERLEngine:
         # -------------------------------------------------------------
         # BRANCH 3: EXECUTION TIMEOUTS
         # -------------------------------------------------------------
-        if any(k in err_lower for k in ("timeout", "timelimitexceeded", "timed out")):
+        if (
+            err_type_str.lower() in ("timeouterror", "timelimitexceeded", "timeout")
+            or any(k in err_lower for k in ("timelimitexceeded", "timed out", "timeoutexpired"))
+        ):
             return DistilledLesson(
                 situation=f"processing large state spaces, deep recursions, or dense graphs in {lang}",
                 action="implement memoization, iterative dynamic programming tables, or early bounding pruning",
                 reason="unoptimized exponential branching O(2^N) or unbounded depth-first search exceeds the 5.0-second execution sandbox timeout",
+            )
+
+        # -------------------------------------------------------------
+        # BRANCH 3B: SANDBOX MEMORY LIMIT / OPENBLAS ALLOCATION FAILURES
+        # -------------------------------------------------------------
+        if any(k in err_lower for k in ("memory limit", "memoryerror", "out of memory", "openblas")):
+            return DistilledLesson(
+                situation=f"executing numerical or graph algorithms inside a 256 MB memory-capped Win32 sandbox in {lang}",
+                action="use pure standard library data structures and bound cycle-extraction loops instead of importing numpy/OpenBLAS or allocating unbounded lists",
+                reason="native BLAS thread pools and unbounded allocation loops exceed the 256 MB Win32 Job Object memory ceiling",
             )
 
         # -------------------------------------------------------------
@@ -148,26 +163,55 @@ class APERLEngine:
             )
 
         # -------------------------------------------------------------
+        # BRANCH 4B: MISSING IMPORTS & SYNTAX ERRORS IN SANDBOXED CODE
+        # -------------------------------------------------------------
+        if "nameerror" in err_lower or "is not defined" in err_lower:
+            return DistilledLesson(
+                situation=f"emitting standalone sandboxed code blocks in {lang}",
+                action="include all required typing and standard library imports (such as typing.Any, typing.Optional, math, threading, collections) at the top of the solution",
+                reason="isolated sandbox execution runs only the emitted code block and omits imports declared outside it",
+            )
+        if "syntaxerror" in err_lower or "indentationerror" in err_lower:
+            return DistilledLesson(
+                situation=f"generating multi-function or nested-scope implementations in {lang}",
+                action="verify balanced delimiters, valid scoping keywords, and complete syntax before emitting the final code block",
+                reason="syntactically invalid or truncated blocks fail pre-execution AST parsing in the sandbox",
+            )
+
+        # -------------------------------------------------------------
         # BRANCH 5: INVARIANT & ASSERTION ERRORS
         # -------------------------------------------------------------
         if "assertionerror" in err_lower or "invariant" in err_lower:
-            if any(k in err_lower for k in ("energy", "drift", "hamiltonian", "symplectic")):
+            trace_dom = str(getattr(challenge, "domain", trace.domain) or "").lower()
+            if re.search(r"\b(?:energy|drift|hamiltonian|symplectic)\b", err_lower):
                 return DistilledLesson(
                     situation=f"integrating orbital or oscillatory Hamiltonian dynamics in numerical physics ({lang})",
                     action="replace explicit forward Euler schemes with symplectic Velocity-Verlet integrators",
                     reason="first-order explicit Euler introduces artificial secular energy growth that breaches physical conservation invariants",
                 )
-            if any(k in err_lower for k in ("race", "thread", "concurrency", "lock", "lost update")):
+            if (
+                trace_dom in ("concurrency", "systems", "systems_concurrency")
+                or re.search(r"\b(?:race|thread|threading|concurrency|lock|lost update|deadlock)\b", err_lower)
+            ):
                 return DistilledLesson(
                     situation=f"coordinating shared state across multiple concurrent threads in {lang}",
                     action="wrap state modifications in threading.Lock context managers and signal state transitions via Condition variables",
                     reason="unsynchronized access creates race conditions and lost updates that violate count conservation invariants",
                 )
-            if any(k in err_lower for k in ("flow", "cut", "edmonds", "conservation")):
+            if (
+                trace_dom in ("graph_algorithms", "graphs", "graph")
+                or re.search(r"\b(?:flow|min[-_ ]?cut|edmonds|kirchhoff)\b", err_lower)
+            ):
                 return DistilledLesson(
                     situation=f"updating edge flows in network flow optimization algorithms ({lang})",
                     action="maintain skew-symmetry (flow[u][v] == -flow[v][u]) and verify inflow equals outflow at all intermediate nodes",
                     reason="violating skew-symmetry corrupts residual graph capacities and breaches Kirchhoff flow conservation",
+                )
+            if trace_dom in ("dynamic_programming", "dp"):
+                return DistilledLesson(
+                    situation=f"solving optimal substructure dynamic programming challenges in {lang}",
+                    action="verify base cases, reverse capacity iteration order, and parent backtracking reconstruction against small boundary inputs",
+                    reason="incorrect state transition bounds or greedy approximations violate optimality and feasibility assertions",
                 )
             return DistilledLesson(
                 situation=f"encountering AssertionError during multi-tier test execution in {lang}",
@@ -179,9 +223,11 @@ class APERLEngine:
         # BRANCH 6: GENERIC ERROR FALLBACK (NEVER "WHEN NONE...")
         # -------------------------------------------------------------
         err_name = err_type_str if err_type_str and err_type_str.lower() != "none" else "ExecutionError"
-        clean_fix = str(trace.fixed_code or "").replace("\n", " ")[:60].strip()
+        err_lines = [ln.strip() for ln in err_msg_str.splitlines() if ln.strip() and not ln.strip().startswith("Traceback")]
+        summary_msg = (err_lines[-1] if err_lines else err_msg_str)[:60].strip()
+        clean_fix = str(trace.fixed_code or "").replace("\n", " ")[:60].strip() or "verify edge cases and invariants"
         return DistilledLesson(
-            situation=f"handling {err_name} in {lang} ({err_msg_str[:60].strip()})",
+            situation=f"handling {err_name} in {lang} ({summary_msg})",
             action=f"apply structured refactoring: {clean_fix}",
             reason=f"it resolves {err_name} and satisfies test suite requirements",
         )
@@ -321,21 +367,39 @@ class APERLEngine:
 
         domain_val = getattr(challenge, "domain", trace.domain) or "general"
 
-        meta = {
-            "source_task": trace.task_id,
-            "language": trace.language,
-            "error_type": trace.error_type,
-            "domain": domain_val,
-            "status": "candidate",
-            "strength": 10.0,
-            "usage_count": 0,
-            "success_count": 0,
-            "fail_count": 0,
-            "created_at": time.time(),
-            "last_used_at": None,
-        }
+        with sqlite3.connect(self.db_path, timeout=10.0) as conn:
+            conn.execute("PRAGMA busy_timeout = 10000;")
+            existing_row = conn.execute(
+                "SELECT metadata FROM rag_documents WHERE collection = 'lessons' AND id = ?",
+                (lesson_id,),
+            ).fetchone()
+            existing_meta: Dict[str, Any] = {}
+            if existing_row and existing_row[0]:
+                try:
+                    existing_meta = json.loads(existing_row[0])
+                except Exception:
+                    existing_meta = {}
 
-        with sqlite3.connect(self.db_path) as conn:
+            meta = {
+                "source_task": trace.task_id,
+                "language": trace.language,
+                "error_type": trace.error_type,
+                "domain": domain_val,
+                "status": existing_meta.get("status", "candidate"),
+                "strength": existing_meta.get("strength", 10.0),
+                "usage_count": existing_meta.get("usage_count", 0),
+                "success_count": existing_meta.get("success_count", 0),
+                "fail_count": existing_meta.get("fail_count", 0),
+                "created_at": existing_meta.get("created_at", time.time()),
+                "last_used_at": existing_meta.get("last_used_at", None),
+            }
+            if "status_reason" in existing_meta:
+                meta["status_reason"] = existing_meta["status_reason"]
+            if "promoted_at" in existing_meta:
+                meta["promoted_at"] = existing_meta["promoted_at"]
+            if "retired_at" in existing_meta:
+                meta["retired_at"] = existing_meta["retired_at"]
+
             conn.execute(
                 """
                 INSERT OR REPLACE INTO rag_documents (id, collection, text, metadata)
